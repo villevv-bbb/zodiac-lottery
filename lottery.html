@@ -455,21 +455,32 @@
     transition:width .6s ease .1s;
   }
   #reading.show .line{width:64%;}
-  #again{
-    margin-top:12px;border:none;cursor:pointer;font-family:inherit;
-    padding:9px 20px;border-radius:999px;font-size:13.5px;font-weight:700;
-    color:#8a1410;background:linear-gradient(180deg,#ffe9a8,#e8b93f);
-    box-shadow:0 6px 16px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.6);
+  #btnRow{
+    margin-top:12px;display:flex;gap:10px;justify-content:center;align-items:center;
+  }
+  #again,#invite{
+    border:none;cursor:pointer;font-family:inherit;
+    padding:9px 18px;border-radius:999px;font-size:13.5px;font-weight:700;
     position:relative;overflow:hidden;
   }
-  #again::after{
+  #again{
+    color:#8a1410;background:linear-gradient(180deg,#ffe9a8,#e8b93f);
+    box-shadow:0 6px 16px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.6);
+  }
+  #invite{
+    color:#ffe9a8;background:linear-gradient(180deg,#c0392b,#8d1712);
+    box-shadow:0 6px 16px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,190,150,.35),
+               inset 0 0 0 1px rgba(255,210,140,.35);
+  }
+  #again::after,#invite::after{
     content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;
-    background:linear-gradient(100deg,transparent,rgba(255,255,255,.75),transparent);
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.6),transparent);
     transform:skewX(-18deg);
     animation:btnShine 3.2s ease-in-out infinite;
   }
+  #invite::after{animation-delay:1.1s;background:linear-gradient(100deg,transparent,rgba(255,235,190,.55),transparent);}
   @keyframes btnShine{0%,55%{left:-60%;}90%,100%{left:130%;}}
-  #again:active{transform:scale(.96);}
+  #again:active,#invite:active{transform:scale(.96);}
 
   /* 落下的签屑 */
   .confetti{position:absolute;width:7px;height:7px;border-radius:2px;pointer-events:none;z-index:30;}
@@ -492,6 +503,58 @@
     80%{transform:rotate(3deg) translateX(3px);}
     100%{transform:rotate(0) translateX(0);}
   }
+
+  /* ========= 分享海报弹层 ========= */
+  #sheet{
+    position:fixed;inset:0;z-index:200;
+    background:rgba(28,4,2,.86);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:14px;padding:20px;
+    opacity:0;pointer-events:none;transition:opacity .28s;
+  }
+  #sheet.show{opacity:1;pointer-events:auto;}
+  #sheet .frame{
+    position:relative;max-height:74vh;
+    border-radius:14px;overflow:hidden;
+    box-shadow:0 24px 60px rgba(0,0,0,.65), 0 0 0 1px rgba(255,214,130,.35);
+    transform:scale(.88) translateY(10px);
+    transition:transform .34s cubic-bezier(.2,1.2,.4,1);
+    background:#7a1010;
+  }
+  #sheet.show .frame{transform:scale(1) translateY(0);}
+  #posterCanvas{
+    display:block;height:74vh;width:auto;max-width:88vw;
+  }
+  #sheet .tip{
+    color:#ffdaa8;font-size:12.5px;letter-spacing:.06em;text-align:center;
+    text-shadow:0 2px 6px rgba(0,0,0,.6);line-height:1.6;
+  }
+  #sheet .tip b{color:#ffd76e;}
+  #sheet .acts{display:flex;gap:10px;}
+  #sheet .acts button{
+    border:none;cursor:pointer;font-family:inherit;
+    padding:10px 22px;border-radius:999px;font-size:14px;font-weight:800;
+    color:#8a1410;background:linear-gradient(180deg,#fff2cd,#e8b93f);
+    box-shadow:0 8px 20px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.8);
+  }
+  #sheet .acts button.ghost{
+    color:#ffdaa8;background:rgba(255,255,255,.10);
+    box-shadow:inset 0 0 0 1px rgba(255,210,140,.4);
+  }
+  #sheet .acts button:active{transform:scale(.96);}
+  #closeSheet{
+    position:absolute;top:-42px;right:0;width:32px;height:32px;border-radius:50%;
+    background:rgba(255,255,255,.14);color:#ffe4b8;border:none;font-size:18px;
+    cursor:pointer;line-height:1;
+  }
+  /* 生成中 */
+  #posterBusy{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:#ffe4b8;font-size:13px;letter-spacing:.1em;background:rgba(40,8,5,.75);
+    opacity:0;transition:opacity .2s;pointer-events:none;
+  }
+  #posterBusy.on{opacity:1;}
 </style>
 </head>
 <body>
@@ -542,12 +605,29 @@
     <div class="rk" id="rkText"></div>
     <div class="line"></div>
     <div class="rd" id="rdText"></div>
-    <button id="again">再摇一签</button>
+    <div id="btnRow">
+      <button id="invite">生成海报 · 邀好友</button>
+      <button id="again">再摇一签</button>
+    </div>
   </div>
 
   <div id="hint"><span class="dot"></span>摇一摇手机 · 抽一支签<span class="dot"></span></div>
 </div>
 <div id="toast"></div>
+
+<!-- 海报弹层 -->
+<div id="sheet">
+  <div class="frame">
+    <button id="closeSheet" aria-label="关闭">×</button>
+    <canvas id="posterCanvas" width="750" height="1334"></canvas>
+    <div id="posterBusy">正在生成海报…</div>
+  </div>
+  <div class="tip">长按图片 <b>保存 / 发送给朋友</b>，或在微信里点右上角分享</div>
+  <div class="acts">
+    <button id="savePoster">保存图片</button>
+    <button id="sharePoster" class="ghost">发给朋友</button>
+  </div>
+</div>
 
 <script>
 /* ============ 签文数据 ============ */
@@ -569,11 +649,11 @@ const SIGNS = [
 /* 中文数字（签号用） */
 const CN = ["零","一","二","三","四","五","六","七","八","九"];
 function cnNum(n){
-  if (n < 10) return "第 " + CN[n] + " 签";
+  if (n < 10) return "第" + CN[n] + "签";
   const t = Math.floor(n/10), u = n%10;
   let s = (t === 1 ? "十" : CN[t] + "十");
   if (u) s += CN[u];
-  return "第 " + s + " 签";
+  return "第" + s + "签";
 }
 
 const tubeWrap = document.getElementById("tubeWrap");
@@ -663,8 +743,459 @@ function enableMotion(){
 }
 enableMotion();
 
-/* 抽一签 */
-const halo = document.getElementById("halo");
+/* ============================================================
+   分享海报生成（Canvas）
+   ============================================================ */
+const SITE_URL = "https://villevv-bbb.github.io/zodiac-lottery/lottery.html";
+const SHEET_URL = "https://villevv-bbb.github.io/zodiac-lottery/share-lottery.png";
+
+const SERIF = '"Songti SC","STSong","SimSun","Noto Serif CJK SC",serif';
+const SANS  = '-apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+
+const sheetEl  = document.getElementById("sheet");
+const pCanvas  = document.getElementById("posterCanvas");
+const pBusy    = document.getElementById("posterBusy");
+let lastSign = null, lastNum = 0, posterBlob = null, posterDataUrl = null;
+
+/* 圆角矩形 */
+function rr(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+/* 竖排文字 */
+function vText(ctx, text, cx, top, size, color, font, gap){
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.font = `900 ${size}px ${font}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const step = (gap == null ? size * 1.16 : gap);
+  for (let i = 0; i < text.length; i++){
+    ctx.fillText(text[i], cx, top + i * step + size / 2);
+  }
+  ctx.restore();
+}
+/* 金色渐变字 */
+function goldText(ctx, text, x, y, size, font){
+  const g = ctx.createLinearGradient(0, y - size, 0, y + size * 0.4);
+  g.addColorStop(0, "#fff8dd");
+  g.addColorStop(0.32, "#ffe9a8");
+  g.addColorStop(0.62, "#f0c862");
+  g.addColorStop(0.82, "#fff2cd");
+  g.addColorStop(1, "#d9a83f");
+  ctx.fillStyle = g;
+  ctx.font = `900 ${size}px ${font}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x, y);
+}
+
+/* 画签筒 */
+function drawTube(ctx, cx, top, w, h){
+  const x = cx - w/2;
+  // 阴影
+  ctx.save();
+  const sh = ctx.createRadialGradient(cx, top + h + 8, 6, cx, top + h + 8, w * 0.95);
+  sh.addColorStop(0, "rgba(0,0,0,.55)");
+  sh.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = sh;
+  ctx.beginPath();
+  ctx.ellipse(cx, top + h + 6, w * 0.78, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // 筒身
+  const g = ctx.createLinearGradient(x, 0, x + w, 0);
+  g.addColorStop(0,   "#7d4a17");
+  g.addColorStop(0.10,"#b97a34");
+  g.addColorStop(0.24,"#d1934a");
+  g.addColorStop(0.46,"#c07f36");
+  g.addColorStop(0.74,"#9d6224");
+  g.addColorStop(1,   "#6d3c12");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(x, top);
+  ctx.lineTo(x, top + h - 16);
+  ctx.quadraticCurveTo(x, top + h + 4, x + 18, top + h + 8);
+  ctx.lineTo(x + w - 18, top + h + 8);
+  ctx.quadraticCurveTo(x + w, top + h + 4, x + w, top + h - 16);
+  ctx.lineTo(x + w, top);
+  ctx.closePath();
+  ctx.fill();
+
+  // 木纹
+  ctx.save();
+  ctx.clip();
+  ctx.globalAlpha = 0.10;
+  ctx.strokeStyle = "#3a1c05";
+  ctx.lineWidth = 1.6;
+  for (let i = 0; i < 22; i++){
+    const lx = x + 6 + i * (w - 12) / 21;
+    ctx.beginPath();
+    ctx.moveTo(lx, top);
+    ctx.bezierCurveTo(lx + 3, top + h*0.3, lx - 3, top + h*0.65, lx + 1, top + h);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 边缘暗影
+  ctx.save();
+  const eg = ctx.createLinearGradient(x, 0, x + w, 0);
+  eg.addColorStop(0, "rgba(45,18,2,.62)");
+  eg.addColorStop(0.14, "rgba(45,18,2,0)");
+  eg.addColorStop(0.86, "rgba(40,16,2,0)");
+  eg.addColorStop(1, "rgba(38,14,2,.66)");
+  ctx.fillStyle = eg;
+  ctx.fillRect(x, top, w, h + 10);
+  ctx.restore();
+
+  // 底部包边
+  ctx.save();
+  const bg = ctx.createLinearGradient(0, top + h - 52, 0, top + h + 6);
+  bg.addColorStop(0, "rgba(255,220,140,.30)");
+  bg.addColorStop(1, "rgba(110,62,16,.42)");
+  ctx.fillStyle = bg;
+  ctx.fillRect(x + 6, top + h - 50, w - 12, 56);
+  ctx.restore();
+
+  // 筒口（椭圆）
+  ctx.save();
+  const mg = ctx.createRadialGradient(cx, top + 2, 4, cx, top + 2, w * 0.56);
+  mg.addColorStop(0, "#1e0a02");
+  mg.addColorStop(0.55, "#45200a");
+  mg.addColorStop(0.9, "#6b3a14");
+  mg.addColorStop(1, "#8a4f1d");
+  ctx.fillStyle = mg;
+  ctx.beginPath();
+  ctx.ellipse(cx, top, w * 0.53, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,215,130,.42)";
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.ellipse(cx, top, w * 0.47, 15, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  // 筒上的字：财 密 / 富 码（2×2，整体偏左，避让右侧的签）
+  const fs = Math.round(w * 0.26);
+  const lx1 = cx - fs * 1.20, lx2 = cx - fs * 0.08;
+  const ly1 = top + h * 0.30, ly2 = top + h * 0.30 + fs * 1.22;
+  [["财", lx1, ly1], ["密", lx2, ly1], ["富", lx1, ly2], ["码", lx2, ly2]].forEach(([c, px, py]) => {
+    ctx.save();
+    ctx.font = `900 ${fs}px ${SERIF}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "rgba(0,0,0,.55)";
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 4;
+    const cg = ctx.createLinearGradient(0, py - fs/2, 0, py + fs/2);
+    cg.addColorStop(0, "#fff8dd");
+    cg.addColorStop(0.4, "#ffe9a8");
+    cg.addColorStop(0.75, "#eec25c");
+    cg.addColorStop(1, "#c99a2e");
+    ctx.fillStyle = cg;
+    ctx.fillText(c, px, py);
+    ctx.restore();
+  });
+}
+
+/* 画一根签（返回签的绘制区域） */
+function drawStick(ctx, cx, top, w, h, rank, numText, angle){
+  const pivX = cx + w * 0.66, pivY = top + h * 0.44;
+  ctx.save();
+  ctx.translate(pivX, pivY);
+  ctx.rotate(angle);
+  ctx.translate(-pivX, -pivY);
+
+  const x = cx + w * 0.26, y = top + h * 0.02;
+  const sw = w * 0.72, shh = h * 0.90;
+
+  // 投影
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.5)";
+  ctx.shadowBlur = 26;
+  ctx.shadowOffsetX = 6;
+  ctx.shadowOffsetY = 14;
+  ctx.fillStyle = "#f7ecd2";
+  rr(ctx, x, y, sw, shh, 14);
+  ctx.fill();
+  ctx.restore();
+
+  // 签面
+  const sg = ctx.createLinearGradient(x, y, x + sw, y + shh);
+  sg.addColorStop(0, "#fffdf3");
+  sg.addColorStop(0.34, "#f7ecd2");
+  sg.addColorStop(0.68, "#efe0bd");
+  sg.addColorStop(1, "#dcc79c");
+  ctx.fillStyle = sg;
+  rr(ctx, x, y, sw, shh, 14);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(190,150,90,.55)";
+  ctx.lineWidth = 3;
+  rr(ctx, x + 1.5, y + 1.5, sw - 3, shh - 3, 13);
+  ctx.stroke();
+
+  // 红漆签头
+  ctx.save();
+  rr(ctx, x, y, sw, shh, 14);
+  ctx.clip();
+  const rg = ctx.createLinearGradient(0, y, 0, y + shh * 0.09);
+  rg.addColorStop(0, "#c0392b");
+  rg.addColorStop(1, "#96261c");
+  ctx.fillStyle = rg;
+  ctx.fillRect(x, y, sw, shh * 0.09);
+  ctx.restore();
+
+  // 签文竖排
+  const vfs = Math.round(sw * 0.32);
+  vText(ctx, rank, x + sw * 0.5, y + shh * 0.15, vfs, "#a81f1a", SERIF, vfs * 1.18);
+
+  // 签号
+  ctx.save();
+  ctx.font = `900 ${Math.round(sw * 0.155)}px ${SERIF}`;
+  ctx.fillStyle = "#8a5f18";
+  ctx.textAlign = "center";
+  ctx.fillText(numText, x + sw * 0.5, y + shh * 0.90);
+  ctx.restore();
+
+  // 印章
+  const sealS = sw * 0.20;
+  ctx.save();
+  ctx.translate(x + sw * 0.80, y + shh * 0.70);
+  ctx.rotate(-6 * Math.PI / 180);
+  ctx.fillStyle = "#b7271f";
+  rr(ctx, -sealS/2, -sealS/2, sealS, sealS, 5);
+  ctx.fill();
+  ctx.fillStyle = "#fff2d8";
+  ctx.font = `700 ${Math.round(sealS * 0.42)}px ${SERIF}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("吉", 0, -sealS * 0.19);
+  ctx.fillText("祥", 0,  sealS * 0.21);
+  ctx.restore();
+
+  ctx.restore();
+}
+
+/* 金尘 */
+function drawDust(ctx, W, H, n){
+  for (let i = 0; i < n; i++){
+    const x = Math.random() * W, y = Math.random() * H;
+    const r = 0.8 + Math.random() * 2.6;
+    const a = 0.10 + Math.random() * 0.55;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = "#ffe2a0";
+    ctx.shadowColor = "rgba(255,205,120,.9)";
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+/* ===== 绘制整张海报 ===== */
+function buildPoster(sign, num){
+  const W = 750, H = 1334;
+  pCanvas.width = W; pCanvas.height = H;
+  const ctx = pCanvas.getContext("2d");
+
+  // 背景
+  const bg = ctx.createRadialGradient(W/2, H*0.34, 60, W/2, H*0.46, H*0.92);
+  bg.addColorStop(0,    "#c22e24");
+  bg.addColorStop(0.34, "#a51d16");
+  bg.addColorStop(0.68, "#7d1210");
+  bg.addColorStop(1,    "#4d0907");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // 中心光晕
+  const gl = ctx.createRadialGradient(W/2, H*0.40, 20, W/2, H*0.40, W*0.78);
+  gl.addColorStop(0, "rgba(255,200,110,.30)");
+  gl.addColorStop(0.4, "rgba(220,110,50,.16)");
+  gl.addColorStop(1, "rgba(150,26,18,0)");
+  ctx.fillStyle = gl;
+  ctx.fillRect(0, 0, W, H);
+
+  // 回纹暗纹
+  ctx.save();
+  ctx.globalAlpha = 0.05;
+  ctx.strokeStyle = "#ffe0a0";
+  ctx.lineWidth = 2;
+  for (let d = -H; d < W + H; d += 46){
+    ctx.beginPath(); ctx.moveTo(d, 0); ctx.lineTo(d + H, H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(d, H); ctx.lineTo(d + H, 0); ctx.stroke();
+  }
+  ctx.restore();
+
+  drawDust(ctx, W, H, 120);
+
+  // 暗角
+  const vg = ctx.createRadialGradient(W/2, H*0.45, H*0.20, W/2, H*0.46, H*0.72);
+  vg.addColorStop(0, "rgba(0,0,0,0)");
+  vg.addColorStop(0.62, "rgba(40,3,2,.28)");
+  vg.addColorStop(1, "rgba(24,1,1,.72)");
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+
+  // ===== 标题 =====
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.55)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 6;
+  goldText(ctx, "财 富 密 码", W/2, 132, 74, SERIF);
+  ctx.restore();
+  // 标题下金线
+  const lg = ctx.createLinearGradient(W*0.22, 0, W*0.78, 0);
+  lg.addColorStop(0, "rgba(255,225,150,0)");
+  lg.addColorStop(0.5, "rgba(255,230,170,.85)");
+  lg.addColorStop(1, "rgba(255,225,150,0)");
+  ctx.fillStyle = lg;
+  ctx.fillRect(W*0.22, 186, W*0.56, 2);
+
+  // 副标题
+  ctx.save();
+  ctx.font = `500 26px ${SANS}`;
+  ctx.fillStyle = "rgba(255,225,180,.92)";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("摇 一 摇 · 抽 一 支 属 于 你 的 签", W/2, 226);
+  ctx.restore();
+
+  // ===== 签筒 + 签 =====
+  const tubeW = 300, tubeH = 340;
+  const tubeX = W/2 + 40, tubeTop = 330;
+  drawTube(ctx, tubeX, tubeTop, tubeW, tubeH);
+  drawStick(ctx, tubeX, tubeTop, tubeW, tubeH, sign.rank, cnNum(num), -0.155);
+
+  // ===== 结果区 =====
+  const ry = 762;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.6)";
+  ctx.shadowBlur = 14;
+  ctx.shadowOffsetY = 3;
+  goldText(ctx, sign.rank, W/2, ry, 52, SERIF);
+  ctx.restore();
+
+  // 签号 pill
+  ctx.save();
+  const pillW = 190, pillH = 44;
+  rr(ctx, W/2 - pillW/2, ry + 40, pillW, pillH, pillH/2);
+  ctx.fillStyle = "rgba(255,224,170,.14)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,214,140,.55)";
+  ctx.lineWidth = 1.6;
+  rr(ctx, W/2 - pillW/2, ry + 40, pillW, pillH, pillH/2);
+  ctx.stroke();
+  ctx.font = `900 24px ${SERIF}`;
+  ctx.fillStyle = "#ffd76e";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(cnNum(num), W/2, ry + 63);
+  ctx.restore();
+
+  // 诗句
+  ctx.save();
+  ctx.font = `700 34px ${SERIF}`;
+  ctx.fillStyle = "#ffe4b8";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.shadowColor = "rgba(0,0,0,.45)";
+  ctx.shadowBlur = 8;
+  ctx.fillText("「 " + sign.poem + " 」", W/2, ry + 128);
+  ctx.restore();
+
+  // 解读（自动换行）
+  ctx.save();
+  ctx.font = `400 23px ${SANS}`;
+  ctx.fillStyle = "rgba(255,225,195,.82)";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const maxW = W * 0.78, lineH = 38;
+  let line = "", lines = [];
+  for (const ch of sign.say){
+    if (ctx.measureText(line + ch).width > maxW){ lines.push(line); line = ch; }
+    else line += ch;
+  }
+  if (line) lines.push(line);
+  lines.slice(0, 3).forEach((t, i) => ctx.fillText(t, W/2, ry + 186 + i * lineH));
+  ctx.restore();
+
+  // ===== 底部：二维码 + 邀请语 =====
+  const qrSize = 168;
+  const qrX = W/2 - qrSize/2, qrY = H - 292;
+
+  // 白色二维码底板
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.45)";
+  ctx.shadowBlur = 20;
+  ctx.shadowOffsetY = 8;
+  ctx.fillStyle = "#f6e7c8";
+  rr(ctx, qrX - 12, qrY - 12, qrSize + 24, qrSize + 24, 12);
+  ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = "rgba(200,160,90,.7)";
+  ctx.lineWidth = 2;
+  rr(ctx, qrX - 12, qrY - 12, qrSize + 24, qrSize + 24, 12);
+  ctx.stroke();
+
+  if (window.__qrImg && window.__qrImg.complete && window.__qrImg.naturalWidth){
+    ctx.drawImage(window.__qrImg, qrX, qrY, qrSize, qrSize);
+  }
+
+  // 二维码上方引导
+  ctx.save();
+  ctx.font = `900 26px ${SANS}`;
+  ctx.fillStyle = "#ffd76e";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.shadowColor = "rgba(0,0,0,.5)";
+  ctx.shadowBlur = 8;
+  ctx.fillText("长按识别 · 抽你的签", W/2, qrY - 40);
+  ctx.restore();
+
+  // 底部邀请语
+  ctx.save();
+  ctx.font = `500 21px ${SANS}`;
+  ctx.fillStyle = "rgba(255,215,175,.72)";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("看看你手气如何 · 抽到上上签记得回来报喜", W/2, H - 42);
+  ctx.restore();
+
+  // 四角金线装饰
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,220,150,.45)";
+  ctx.lineWidth = 3;
+  const m = 26, L = 54;
+  [[m, m, 1, 1], [W-m, m, -1, 1], [m, H-m, 1, -1], [W-m, H-m, -1, -1]].forEach(([x, y, sx, sy]) => {
+    ctx.beginPath();
+    ctx.moveTo(x + sx * L, y);
+    ctx.lineTo(x, y);
+    ctx.lineTo(x, y + sy * L);
+    ctx.stroke();
+  });
+  ctx.restore();
+
+  posterDataUrl = pCanvas.toDataURL("image/png");
+  pCanvas.toBlob(b => { posterBlob = b; }, "image/png");
+}
+
+/* 生成二维码图片（使用同域静态二维码图，避免外部依赖） */
+function makeQR(text, cb){
+  const i2 = new Image();
+  i2.crossOrigin = "anonymous";
+  i2.onload = () => { window.__qrImg = i2; cb(); };
+  i2.onerror = () => { cb(); };
+  i2.src = "qr.png";
+}
+
 const rays = document.getElementById("rays");
 
 function burst(){
@@ -702,6 +1233,7 @@ function draw(){
   const idx = randInt(SIGNS.length);
   const sign = SIGNS[idx];
   const num = 1 + randInt(49);
+  lastSign = sign; lastNum = num;
 
   setTimeout(() => {
     tubeWrap.classList.remove("shaking");
@@ -778,6 +1310,101 @@ setTimeout(() => {
     hint.textContent = "摇一摇手机 · 或点一下签筒";
   }
 }, 600);
+
+/* ============================================================
+   海报弹层交互
+   ============================================================ */
+const inviteBtn = document.getElementById("invite");
+
+function openSheet(){
+  if (!lastSign){ draw(); return; }
+  sheetEl.classList.add("show");
+  pBusy.classList.add("on");
+
+  // 先确保二维码就绪再绘制
+  const done = () => {
+    buildPoster(lastSign, lastNum);
+    pBusy.classList.remove("on");
+  };
+  if (window.__qrReady) done();
+  else makeQR(SITE_URL, () => { window.__qrReady = true; done(); });
+}
+
+function closeSheet(){ sheetEl.classList.remove("show"); }
+
+inviteBtn.addEventListener("click", openSheet);
+document.getElementById("closeSheet").addEventListener("click", closeSheet);
+sheetEl.addEventListener("click", e => { if (e.target === sheetEl) closeSheet(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+
+/* 保存图片 */
+document.getElementById("savePoster").addEventListener("click", async () => {
+  if (!posterBlob && !posterDataUrl) return;
+  // 微信/移动端优先尝试长按保存，直接下载在微信内多半无效
+  const isWX = /MicroMessenger/i.test(navigator.userAgent);
+  if (isWX){
+    toast("请长按海报图片 → 保存图片");
+    return;
+  }
+  try {
+    const url = URL.createObjectURL(posterBlob || await (await fetch(posterDataUrl)).blob());
+    const a = document.createElement("a");
+    a.href = url; a.download = `财富密码_${lastSign.rank}_${lastNum}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+    toast("已保存，快去发给朋友吧");
+  } catch (err){
+    toast("请长按海报图片保存");
+  }
+});
+
+/* 发给朋友（系统分享） */
+document.getElementById("sharePoster").addEventListener("click", async () => {
+  if (!posterBlob && !posterDataUrl) return;
+  const isWX = /MicroMessenger/i.test(navigator.userAgent);
+  const text = `我在「财富密码」摇到了${lastSign.rank}：${lastSign.poem}。你也来摇一摇？`;
+
+  // 尝试分享文件（多数浏览器/APP 支持）
+  try {
+    let blob = posterBlob;
+    if (!blob && posterDataUrl) blob = await (await fetch(posterDataUrl)).blob();
+    const file = new File([blob], "财富密码.png", {type:"image/png"});
+    if (navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], text, title:"财富密码"});
+      return;
+    }
+  } catch (e){ /* 用户取消或失败，继续降级 */ }
+
+  try {
+    if (navigator.share){
+      await navigator.share({title:"财富密码", text, url:SITE_URL});
+      return;
+    }
+  } catch (e){}
+
+  // 降级：复制链接
+  try {
+    await navigator.clipboard.writeText(text + " " + SITE_URL);
+    toast(isWX ? "链接已复制，去微信群粘贴吧" : "链接已复制");
+  } catch (e){
+    toast("请长按海报图片 → 发送给朋友");
+  }
+});
+
+/* ============================================================
+   微信内右上角分享配置（有 JS-SDK 时才生效）
+   ============================================================ */
+(function initWxShare(){
+  const isWX = /MicroMessenger/i.test(navigator.userAgent);
+  if (!isWX || !window.wx || !window.wx.config) return;
+  // 若日后接入公众号 JS-SDK，只需在此填入签名配置
+  // wx.config({...}); wx.ready(() => { wx.updateAppMessageShareData({...}); })
+})();
+
+/* 预热：页面加载后先生成二维码，点"生成海报"时更快 */
+setTimeout(() => {
+  makeQR(SITE_URL, () => { window.__qrReady = true; });
+}, 1200);
 </script>
 </body>
 </html>
