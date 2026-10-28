@@ -951,22 +951,25 @@ function drawStick(ctx, cx, top, w, h, rank, numText, angle){
   ctx.fillRect(x, y, sw, shh * 0.09);
   ctx.restore();
 
-  // 签文竖排
-  const vfs = Math.round(sw * 0.32);
-  vText(ctx, rank, x + sw * 0.5, y + shh * 0.15, vfs, "#a81f1a", SERIF, vfs * 1.18);
+  // 签文竖排（根据字数自适应，确保不超出签面、不压签号和印章）
+  const chars = rank.length;
+  const vfs = Math.round(Math.min(sw * 0.26, shh * 0.52 / chars));
+  const vStep = vfs * 1.06;
+  const vTop = y + shh * 0.10 + (shh * 0.58 - (chars - 1) * vStep - vfs) / 2;
+  vText(ctx, rank, x + sw * 0.5, vTop, vfs, "#a81f1a", SERIF, vStep);
 
   // 签号
   ctx.save();
-  ctx.font = `900 ${Math.round(sw * 0.155)}px ${SERIF}`;
+  ctx.font = `900 ${Math.round(sw * 0.14)}px ${SERIF}`;
   ctx.fillStyle = "#8a5f18";
   ctx.textAlign = "center";
-  ctx.fillText(numText, x + sw * 0.5, y + shh * 0.90);
+  ctx.fillText(numText, x + sw * 0.5, y + shh * 0.885);
   ctx.restore();
 
   // 印章
-  const sealS = sw * 0.20;
+  const sealS = sw * 0.19;
   ctx.save();
-  ctx.translate(x + sw * 0.80, y + shh * 0.70);
+  ctx.translate(x + sw * 0.80, y + shh * 0.74);
   ctx.rotate(-6 * Math.PI / 180);
   ctx.fillStyle = "#b7271f";
   rr(ctx, -sealS/2, -sealS/2, sealS, sealS, 5);
