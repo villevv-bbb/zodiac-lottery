@@ -86,9 +86,10 @@
     if (cached && Date.now() - ts < 30 * 60 * 1000) return Promise.resolve(cached);
 
     var apis = [
-      { url: "https://api.ipify.org?format=json", pick: function (d) { return d.ip; } },
-      { url: "https://ipapi.co/json/", pick: function (d) { return d.ip; } },
-      { url: "https://api.ip.sb/jsonip", pick: function (d) { return d.ip; } }
+      { url: "https://api64.ipify.org?format=json", pick: function (d) { return d.ip; } },
+      { url: "https://api.ip.sb/jsonip", pick: function (d) { return d.ip; } },
+      { url: "https://ipwho.is/", pick: function (d) { return d.success === false ? null : d.ip; } },
+      { url: "https://api.ipify.org?format=json", pick: function (d) { return d.ip; } }
     ];
 
     return apis.reduce(function (p, api) {
