@@ -1003,32 +1003,121 @@ function drawDust(ctx, W, H, n){
   }
 }
 
+/* ============================================================
+   版式工具：统一测量与对齐（所有文字都按"实测包围盒"垂直居中）
+   ============================================================ */
+function mctx(){ return pCanvas.getContext("2d"); }
+
+/* 设置字体并返回度量 */
+function setFont(ctx, weight, size, family){
+  ctx.font = `${weight} ${size}px ${family}`;
+  return ctx.measureText("汉");
+}
+
+/* 以基线盒子垂直居中绘制单行文字 */
+function textMid(ctx, str, cx, cy, size, color, weight, family, opt){
+  opt = opt || {};
+  ctx.save();
+  ctx.font = `${weight} ${size}px ${family}`;
+  ctx.fillStyle = color;
+  ctx.textAlign = opt.align || "center";
+  ctx.textBaseline = "alphabetic";
+  const m = ctx.measureText(str);
+  const asc = (m.actualBoundingBoxAscent != null) ? m.actualBoundingBoxAscent : size * 0.78;
+  const desc = (m.actualBoundingBoxDescent != null) ? m.actualBoundingBoxDescent : size * 0.22;
+  const baseY = cy + (asc - desc) / 2;
+  if (opt.shadow){
+    ctx.shadowColor = opt.shadow;
+    ctx.shadowBlur = opt.blur || 10;
+    ctx.shadowOffsetY = opt.offY || 0;
+  }
+  ctx.fillText(str, cx, baseY);
+  ctx.restore();
+  return {asc, desc, w: m.width};
+}
+
+/* 金色渐变文字（垂直居中） */
+function goldMid(ctx, str, cx, cy, size, family, opt){
+  opt = opt || {};
+  ctx.save();
+  ctx.font = `900 ${size}px ${family}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  const m = ctx.measureText(str);
+  const asc = (m.actualBoundingBoxAscent != null) ? m.actualBoundingBoxAscent : size * 0.78;
+  const desc = (m.actualBoundingBoxDescent != null) ? m.actualBoundingBoxDescent : size * 0.22;
+  const baseY = cy + (asc - desc) / 2;
+  const g = ctx.createLinearGradient(0, cy - asc, 0, cy + desc);
+  g.addColorStop(0, "#fff9e6");
+  g.addColorStop(0.34, "#ffe9a8");
+  g.addColorStop(0.60, "#f0c862");
+  g.addColorStop(0.80, "#fff2cd");
+  g.addColorStop(1, "#d9a83f");
+  ctx.fillStyle = g;
+  ctx.shadowColor = opt.shadow || "rgba(70,20,0,.55)";
+  ctx.shadowBlur = opt.blur || 14;
+  ctx.shadowOffsetY = opt.offY || 5;
+  ctx.fillText(str, cx, baseY);
+  ctx.restore();
+  return {asc, desc, w: m.width};
+}
+
+/* 多行文字按字符换行（返回行数组），保证不超宽 */
+function wrapCJK(ctx, text, maxW){
+  const lines = [];
+  let line = "";
+  for (const ch of text){
+    if (ch === "\n"){ lines.push(line); line = ""; continue; }
+    if (ctx.measureText(line + ch).width > maxW && line){
+      lines.push(line); line = ch;
+    } else line += ch;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/* 多行文本块居中绘制：返回实际占用高度 */
+function textBlock(ctx, text, cx, top, size, color, weight, family, maxW, lineGap, opt){
+  opt = opt || {};
+  ctx.save();
+  ctx.font = `${weight} ${size}px ${family}`;
+  const lines = wrapCJK(ctx, text, maxW);
+  const lh = size * (lineGap || 1.62);
+  lines.forEach((t, i) => {
+    const cy = top + i * lh + size * 0.5 + size * 0.14;
+    textMid(ctx, t, cx, cy, size, color, weight, family, {shadow: opt.shadow, blur: opt.blur, offY: opt.offY});
+  });
+  ctx.restore();
+  return lines.length * lh;
+}
+
 /* ===== 绘制整张海报 ===== */
 function buildPoster(sign, num){
   const W = 750, H = 1334;
   pCanvas.width = W; pCanvas.height = H;
-  const ctx = pCanvas.getContext("2d");
+  const ctx = mctx();
+  ctx.clearRect(0, 0, W, H);
 
-  // 背景
-  const bg = ctx.createRadialGradient(W/2, H*0.34, 60, W/2, H*0.46, H*0.92);
-  bg.addColorStop(0,    "#c22e24");
-  bg.addColorStop(0.34, "#a51d16");
-  bg.addColorStop(0.68, "#7d1210");
-  bg.addColorStop(1,    "#4d0907");
+  /* ---------- 背景 ---------- */
+  const bg = ctx.createRadialGradient(W/2, H*0.30, 40, W/2, H*0.44, H*0.86);
+  bg.addColorStop(0,    "#c9352a");
+  bg.addColorStop(0.28, "#a81e17");
+  bg.addColorStop(0.62, "#82130f");
+  bg.addColorStop(1,    "#4a0806");
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  // 中心光晕
-  const gl = ctx.createRadialGradient(W/2, H*0.40, 20, W/2, H*0.40, W*0.78);
-  gl.addColorStop(0, "rgba(255,200,110,.30)");
-  gl.addColorStop(0.4, "rgba(220,110,50,.16)");
+  // 中心光晕（签筒背后）
+  const gl = ctx.createRadialGradient(W/2, 500, 20, W/2, 500, W*0.66);
+  gl.addColorStop(0, "rgba(255,205,120,.32)");
+  gl.addColorStop(0.42, "rgba(228,120,55,.15)");
   gl.addColorStop(1, "rgba(150,26,18,0)");
   ctx.fillStyle = gl;
   ctx.fillRect(0, 0, W, H);
 
   // 回纹暗纹
   ctx.save();
-  ctx.globalAlpha = 0.05;
+  ctx.globalAlpha = 0.045;
   ctx.strokeStyle = "#ffe0a0";
   ctx.lineWidth = 2;
   for (let d = -H; d < W + H; d += 46){
@@ -1037,151 +1126,159 @@ function buildPoster(sign, num){
   }
   ctx.restore();
 
-  drawDust(ctx, W, H, 120);
+  drawDust(ctx, W, H, 110);
 
   // 暗角
-  const vg = ctx.createRadialGradient(W/2, H*0.45, H*0.20, W/2, H*0.46, H*0.72);
+  const vg = ctx.createRadialGradient(W/2, H*0.44, H*0.18, W/2, H*0.46, H*0.70);
   vg.addColorStop(0, "rgba(0,0,0,0)");
-  vg.addColorStop(0.62, "rgba(40,3,2,.28)");
-  vg.addColorStop(1, "rgba(24,1,1,.72)");
+  vg.addColorStop(0.60, "rgba(40,3,2,.26)");
+  vg.addColorStop(1, "rgba(22,1,1,.70)");
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, W, H);
 
-  // ===== 标题 =====
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,.55)";
-  ctx.shadowBlur = 18;
-  ctx.shadowOffsetY = 6;
-  goldText(ctx, "财 富 密 码", W/2, 132, 74, SERIF);
-  ctx.restore();
-  // 标题下金线
-  const lg = ctx.createLinearGradient(W*0.22, 0, W*0.78, 0);
+  /* ---------- 页头 ---------- */
+  const HEAD_Y = 108;          // 主标题中心
+  goldMid(ctx, "财 富 密 码", W/2, HEAD_Y, 74, SERIF);
+
+  // 标题下金线（对称、居中）
+  const lineY = HEAD_Y + 58;
+  const lineW = 300;
+  const lg = ctx.createLinearGradient(W/2 - lineW/2, 0, W/2 + lineW/2, 0);
   lg.addColorStop(0, "rgba(255,225,150,0)");
-  lg.addColorStop(0.5, "rgba(255,230,170,.85)");
+  lg.addColorStop(0.5, "rgba(255,232,175,.9)");
   lg.addColorStop(1, "rgba(255,225,150,0)");
   ctx.fillStyle = lg;
-  ctx.fillRect(W*0.22, 186, W*0.56, 2);
+  ctx.fillRect(W/2 - lineW/2, lineY, lineW, 2);
 
-  // 副标题
+  // 副标题（金线下方，等距）
+  textMid(ctx, "摇 一 摇 · 抽 一 支 属 于 你 的 签", W/2, lineY + 32, 25,
+          "rgba(255,226,184,.90)", 500, SANS, {shadow:"rgba(0,0,0,.45)", blur:8});
+
+  /* ---------- 签筒与签 ---------- */
+  const tubeW = 292, tubeH = 330;
+  const tubeX = W/2 + 26, tubeTop = 268;
+  // 底座光圈
   ctx.save();
-  ctx.font = `500 26px ${SANS}`;
-  ctx.fillStyle = "rgba(255,225,180,.92)";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("摇 一 摇 · 抽 一 支 属 于 你 的 签", W/2, 226);
-  ctx.restore();
-
-  // ===== 签筒 + 签 =====
-  const tubeW = 300, tubeH = 340;
-  const tubeX = W/2 + 40, tubeTop = 330;
-  drawTube(ctx, tubeX, tubeTop, tubeW, tubeH);
-  drawStick(ctx, tubeX, tubeTop, tubeW, tubeH, sign.rank, cnNum(num), -0.155);
-
-  // ===== 结果区 =====
-  const ry = 762;
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,.6)";
-  ctx.shadowBlur = 14;
-  ctx.shadowOffsetY = 3;
-  goldText(ctx, sign.rank, W/2, ry, 52, SERIF);
-  ctx.restore();
-
-  // 签号 pill
-  ctx.save();
-  const pillW = 190, pillH = 44;
-  rr(ctx, W/2 - pillW/2, ry + 40, pillW, pillH, pillH/2);
-  ctx.fillStyle = "rgba(255,224,170,.14)";
+  const pool = ctx.createRadialGradient(tubeX, tubeTop + tubeH + 6, 6, tubeX, tubeTop + tubeH + 6, tubeW * 0.9);
+  pool.addColorStop(0, "rgba(255,196,110,.30)");
+  pool.addColorStop(1, "rgba(255,150,60,0)");
+  ctx.fillStyle = pool;
+  ctx.beginPath();
+  ctx.ellipse(tubeX, tubeTop + tubeH + 6, tubeW * 0.86, 44, 0, 0, Math.PI*2);
   ctx.fill();
-  ctx.strokeStyle = "rgba(255,214,140,.55)";
-  ctx.lineWidth = 1.6;
-  rr(ctx, W/2 - pillW/2, ry + 40, pillW, pillH, pillH/2);
-  ctx.stroke();
-  ctx.font = `900 24px ${SERIF}`;
-  ctx.fillStyle = "#ffd76e";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(cnNum(num), W/2, ry + 63);
   ctx.restore();
 
-  // 诗句
+  drawTube(ctx, tubeX, tubeTop, tubeW, tubeH);
+  drawStick(ctx, tubeX, tubeTop, tubeW, tubeH, sign.rank, cnNum(num), -0.15);
+
+  /* ---------- 结果区（严格自上而下排布，间距统一） ---------- */
+  let y = 700;
+
+  // 1. 签级
+  goldMid(ctx, sign.rank, W/2, y, 54, SERIF);
+  y += 62;
+
+  // 2. 签号胶囊（自身垂直居中）
+  const numStr = cnNum(num);
+  ctx.save();
+  ctx.font = `900 24px ${SERIF}`;
+  const tw = ctx.measureText(numStr).width;
+  ctx.restore();
+  const pillH = 46, pillW = Math.max(176, tw + 64);
+  const pillY = y;
+  ctx.save();
+  rr(ctx, W/2 - pillW/2, pillY, pillW, pillH, pillH/2);
+  ctx.fillStyle = "rgba(255,224,170,.13)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,214,140,.52)";
+  ctx.lineWidth = 1.6;
+  rr(ctx, W/2 - pillW/2, pillY, pillW, pillH, pillH/2);
+  ctx.stroke();
+  ctx.restore();
+  textMid(ctx, numStr, W/2, pillY + pillH/2, 24, "#ffd76e", 900, SERIF);
+  y = pillY + pillH + 34;
+
+  // 3. 诗句（引号用浅色，诗句金色，整体居中）
   ctx.save();
   ctx.font = `700 34px ${SERIF}`;
-  ctx.fillStyle = "#ffe4b8";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  const q1 = "「 ", q2 = " 」";
+  const wAll = ctx.measureText(q1 + sign.poem + q2).width;
+  let cx = W/2 - wAll/2;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  const put = (t, color) => {
+    ctx.font = `700 34px ${SERIF}`;
+    ctx.fillStyle = color;
+    const m = ctx.measureText(t);
+    const asc = (m.actualBoundingBoxAscent != null) ? m.actualBoundingBoxAscent : 26;
+    const desc = (m.actualBoundingBoxDescent != null) ? m.actualBoundingBoxDescent : 8;
+    ctx.fillText(t, cx, y + (asc - desc) / 2);
+    cx += m.width;
+  };
   ctx.shadowColor = "rgba(0,0,0,.45)";
   ctx.shadowBlur = 8;
-  ctx.fillText("「 " + sign.poem + " 」", W/2, ry + 128);
+  put(q1, "rgba(255,206,150,.62)");
+  ctx.shadowColor = "transparent";
+  put(sign.poem, "#ffe8c2");
+  ctx.shadowColor = "rgba(0,0,0,.45)";
+  put(q2, "rgba(255,206,150,.62)");
   ctx.restore();
+  y += 66;
 
-  // 解读（自动换行）
+  // 4. 解读（自动换行，行高统一，最多 3 行，超长自动缩小字号）
+  let saySize = 23;
   ctx.save();
-  ctx.font = `400 23px ${SANS}`;
-  ctx.fillStyle = "rgba(255,225,195,.82)";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  const maxW = W * 0.78, lineH = 38;
-  let line = "", lines = [];
-  for (const ch of sign.say){
-    if (ctx.measureText(line + ch).width > maxW){ lines.push(line); line = ch; }
-    else line += ch;
-  }
-  if (line) lines.push(line);
-  lines.slice(0, 3).forEach((t, i) => ctx.fillText(t, W/2, ry + 186 + i * lineH));
+  ctx.font = `400 ${saySize}px ${SANS}`;
+  let lines = wrapCJK(ctx, sign.say, W * 0.76);
+  if (lines.length > 3){ saySize = 21; ctx.font = `400 ${saySize}px ${SANS}`; lines = wrapCJK(ctx, sign.say, W * 0.78); }
   ctx.restore();
+  const usedH = textBlock(ctx, lines.join(""), W/2, y, saySize,
+                          "rgba(255,226,196,.80)", 400, SANS, W * 0.78, 1.66,
+                          {shadow:"rgba(0,0,0,.35)", blur:6});
+  y += Math.min(usedH, saySize * 1.66 * 3);
 
-  // ===== 底部：二维码 + 邀请语 =====
-  const qrSize = 168;
-  const qrX = W/2 - qrSize/2, qrY = H - 292;
+  /* ---------- 底部二维码 ---------- */
+  const qrSize = 170;
+  const qrY = H - 300;
+  const qrX = W/2 - qrSize/2;
 
-  // 白色二维码底板
+  // 二维码上方引导语
+  textMid(ctx, "长按识别 · 抽你的签", W/2, qrY - 38, 25, "#ffd76e", 900, SANS,
+          {shadow:"rgba(0,0,0,.5)", blur:8});
+
+  // 底板
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,.45)";
-  ctx.shadowBlur = 20;
-  ctx.shadowOffsetY = 8;
+  ctx.shadowBlur = 22;
+  ctx.shadowOffsetY = 9;
   ctx.fillStyle = "#f6e7c8";
-  rr(ctx, qrX - 12, qrY - 12, qrSize + 24, qrSize + 24, 12);
+  rr(ctx, qrX - 13, qrY - 13, qrSize + 26, qrSize + 26, 13);
   ctx.fill();
   ctx.restore();
   ctx.strokeStyle = "rgba(200,160,90,.7)";
   ctx.lineWidth = 2;
-  rr(ctx, qrX - 12, qrY - 12, qrSize + 24, qrSize + 24, 12);
+  rr(ctx, qrX - 13, qrY - 13, qrSize + 26, qrSize + 26, 13);
   ctx.stroke();
 
   if (window.__qrImg && window.__qrImg.complete && window.__qrImg.naturalWidth){
     ctx.drawImage(window.__qrImg, qrX, qrY, qrSize, qrSize);
   }
 
-  // 二维码上方引导
-  ctx.save();
-  ctx.font = `900 26px ${SANS}`;
-  ctx.fillStyle = "#ffd76e";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.shadowColor = "rgba(0,0,0,.5)";
-  ctx.shadowBlur = 8;
-  ctx.fillText("长按识别 · 抽你的签", W/2, qrY - 40);
-  ctx.restore();
-
   // 底部邀请语
-  ctx.save();
-  ctx.font = `500 21px ${SANS}`;
-  ctx.fillStyle = "rgba(255,215,175,.72)";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("看看你手气如何 · 抽到上上签记得回来报喜", W/2, H - 42);
-  ctx.restore();
+  textMid(ctx, "看看你手气如何 · 抽到上上签记得回来报喜", W/2, H - 52, 21,
+          "rgba(255,214,176,.70)", 500, SANS, {shadow:"rgba(0,0,0,.4)", blur:6});
 
-  // 四角金线装饰
+  /* ---------- 四角金线 ---------- */
   ctx.save();
-  ctx.strokeStyle = "rgba(255,220,150,.45)";
+  ctx.strokeStyle = "rgba(255,220,150,.42)";
   ctx.lineWidth = 3;
-  const m = 26, L = 54;
-  [[m, m, 1, 1], [W-m, m, -1, 1], [m, H-m, 1, -1], [W-m, H-m, -1, -1]].forEach(([x, y, sx, sy]) => {
+  ctx.lineCap = "round";
+  const m = 26, L = 52;
+  [[m, m, 1, 1], [W-m, m, -1, 1], [m, H-m, 1, -1], [W-m, H-m, -1, -1]].forEach(([x, yy, sx, sy]) => {
     ctx.beginPath();
-    ctx.moveTo(x + sx * L, y);
-    ctx.lineTo(x, y);
-    ctx.lineTo(x, y + sy * L);
+    ctx.moveTo(x + sx * L, yy);
+    ctx.lineTo(x, yy);
+    ctx.lineTo(x, yy + sy * L);
     ctx.stroke();
   });
   ctx.restore();
