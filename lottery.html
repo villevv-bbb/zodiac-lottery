@@ -613,6 +613,9 @@
 
   <div id="hint"><span class="dot"></span>摇一摇手机 · 抽一支签<span class="dot"></span></div>
 </div>
+<div id="viewerCount" style="position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:60;
+     font-size:11.5px;color:rgba(255,214,176,.55);letter-spacing:.08em;pointer-events:none;
+     text-shadow:0 2px 6px rgba(0,0,0,.5);display:none;"></div>
 <div id="toast"></div>
 
 <!-- 海报弹层 -->
@@ -1334,6 +1337,7 @@ function draw(){
   const sign = SIGNS[idx];
   const num = 1 + randInt(49);
   lastSign = sign; lastNum = num;
+  if (window.Stats) window.Stats.draw();
 
   setTimeout(() => {
     tubeWrap.classList.remove("shaking");
@@ -1505,6 +1509,28 @@ document.getElementById("sharePoster").addEventListener("click", async () => {
 setTimeout(() => {
   makeQR(SITE_URL, () => { window.__qrReady = true; });
 }, 1200);
+</script>
+<script src="stats.js"></script>
+<script>
+/* 实时在线人数（可选展示，失败静默） */
+(function(){
+  var box = document.getElementById("viewerCount");
+  var URL_ = "https://mucujjdysvjunpjilcho.supabase.co/rest/v1/visits?select=session_id,entered_at,duration&entered_at=gte.";
+  var KEY = "sb_publishable_U1xfyeUySKLKhHrmt9WU1g_KKoL0M-P";
+  function tick(){
+    var since = new Date(Date.now() - 5*60*1000).toISOString();
+    fetch(URL_ + encodeURIComponent(since), {headers:{apikey:KEY}})
+      .then(function(r){ return r.ok ? r.json() : []; })
+      .then(function(rows){
+        if (!rows || !rows.length) return;
+        var n = new Set(rows.map(function(x){ return x.session_id; })).size;
+        box.textContent = "近 5 分钟有 " + n + " 人在抽签";
+        box.style.display = "block";
+      }).catch(function(){});
+  }
+  setTimeout(tick, 3000);
+  setInterval(tick, 30000);
+})();
 </script>
 </body>
 </html>

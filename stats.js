@@ -9,8 +9,8 @@
   "use strict";
 
   /* ====== ① 只需改这两行 ====== */
-  var SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
-  var SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
+  var SUPABASE_URL = "https://mucujjdysvjunpjilcho.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_U1xfyeUySKLKhHrmt9WU1g_KKoL0M-P";
   var TABLE = "visits";
 
   /* ====== 内部配置 ====== */
