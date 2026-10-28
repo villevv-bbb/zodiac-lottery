@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#c62828">
+<title>十二生肖掷骰子 · 来抽你的生肖</title>
+<meta name="description" content="点一下骰子，随机掷出你的生肖！十二生肖趣味投掷，快来试试手气。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="十二生肖掷骰子 · 来抽你的生肖">
+<meta property="og:description" content="点一下骰子，随机掷出你的生肖！快来试试手气～">
+<meta property="og:image" content="./share.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root{
+    --red:#c62828; --red-deep:#8e1414; --gold:#ffc63a; --gold-lt:#ffe9ae;
+    --bg1:#fff6e8; --bg2:#ffdfc6;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0;}
+  body{
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(180deg,var(--bg1),var(--bg2));
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    overflow:hidden; user-select:none;
+  }
+  #stage{
+    position:relative; width:min(88vw,66vh,420px); aspect-ratio:1/1;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #rays{position:absolute; inset:-10%; z-index:0; opacity:.55; animation:spin 26s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  #die{
+    position:relative; z-index:2; width:64%; aspect-ratio:1/1; border-radius:16%;
+    background:linear-gradient(145deg,#e53935,#b71c1c);
+    border:.5rem solid var(--red-deep);
+    box-shadow:0 14px 30px rgba(120,20,20,.35), inset 0 0 0 4px var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:transform .12s ease; will-change:transform;
+  }
+  #die:active{transform:scale(.96);}
+  #face{
+    width:86%; aspect-ratio:1/1; border-radius:13%; background:#fffcf4;
+    box-shadow:inset 0 0 0 3px rgba(255,200,90,.9);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  #glyph{
+    width:76%; height:76%; display:flex; align-items:center; justify-content:center;
+    font-size:clamp(44px,14vw,78px); line-height:1; will-change:transform;
+  }
+  @keyframes shake{
+    0%{transform:rotate(0) translate(0,0) scale(1);}
+    20%{transform:rotate(-12deg) translate(-6px,-8px) scale(1.04);}
+    40%{transform:rotate(14deg) translate(7px,4px) scale(.97);}
+    60%{transform:rotate(-9deg) translate(-5px,6px) scale(1.03);}
+    80%{transform:rotate(8deg) translate(4px,-5px) scale(.98);}
+    100%{transform:rotate(0) translate(0,0) scale(1);}
+  }
+  #die.rolling{animation:shake .16s linear infinite;}
+  #die.rolling #glyph{animation:glyphFlicker .09s steps(1) infinite;}
+  @keyframes glyphFlicker{
+    0%{opacity:1; transform:scale(.94) rotate(-6deg);}
+    50%{opacity:.65; transform:scale(1.06) rotate(5deg);}
+    100%{opacity:1; transform:scale(.96) rotate(-3deg);}
+  }
+  @keyframes pop{0%{transform:scale(.86);}45%{transform:scale(1.13);}70%{transform:scale(.96);}100%{transform:scale(1);}}
+  #die.landed{animation:pop .55s cubic-bezier(.34,1.56,.64,1) forwards;}
+
+  #title{
+    position:absolute; top:-2%; left:0; right:0; z-index:3; text-align:center;
+    font-size:clamp(19px,5.2vw,28px); font-weight:900; color:var(--gold-lt);
+    -webkit-text-stroke:6px var(--red-deep); paint-order:stroke fill;
+    text-shadow:0 4px 0 rgba(142,20,20,.35); opacity:0; transition:opacity .2s;
+  }
+  #title.show{opacity:1;}
+  #result{
+    position:absolute; bottom:0%; left:0; right:0; z-index:3; text-align:center;
+    font-size:clamp(28px,8.4vw,48px); font-weight:900; color:var(--gold);
+    -webkit-text-stroke:7px var(--red-deep); paint-order:stroke fill;
+    text-shadow:0 5px 0 rgba(142,20,20,.3); opacity:0; transform:scale(.5);
+    transition:opacity .18s, transform .42s cubic-bezier(.34,1.56,.64,1);
+  }
+  #result.show{opacity:1; transform:scale(1);}
+
+  #wave{
+    position:absolute; z-index:1; width:70%; aspect-ratio:1/1; border-radius:50%;
+    border:.35rem solid rgba(255,240,190,.95); opacity:0; pointer-events:none;
+  }
+  #wave.go{animation:wave .62s ease-out forwards;}
+  @keyframes wave{0%{opacity:.95; transform:scale(.55);}100%{opacity:0; transform:scale(1.85);}}
+
+  #hint{
+    position:absolute; bottom:-8%; left:0; right:0; text-align:center; z-index:3;
+    font-size:clamp(13px,3.5vw,15.5px); color:#a05a2c; opacity:.85;
+    animation:blink 1.8s ease-in-out infinite;
+  }
+  @keyframes blink{0%,100%{opacity:.35}50%{opacity:.95}}
+  .spark{position:absolute; z-index:4; width:10px; height:10px; border-radius:50%;
+         background:radial-gradient(circle,#fff8d0,#ffc63a); pointer-events:none;}
+
+  #actions{
+    position:absolute; bottom:-21%; left:0; right:0; z-index:6;
+    display:flex; gap:9px; justify-content:center; opacity:0;
+    transition:opacity .3s, transform .3s; transform:translateY(8px);
+    pointer-events:none; flex-wrap:wrap;
+  }
+  #actions.show{opacity:1; transform:translateY(0); pointer-events:auto;}
+  .btn{
+    border:none; cursor:pointer; font-family:inherit;
+    padding:10px 15px; border-radius:999px; font-size:13.5px; font-weight:700;
+    background:#fff; color:var(--red); border:2px solid rgba(198,40,40,.22);
+    box-shadow:0 4px 12px rgba(150,50,20,.14);
+    display:flex; align-items:center; gap:5px; white-space:nowrap;
+    transition:transform .12s;
+  }
+  .btn:active{transform:scale(.95);}
+  .btn.primary{background:linear-gradient(145deg,#e53935,#b71c1c); color:#fff;
+    border-color:transparent; box-shadow:0 6px 16px rgba(183,28,28,.35);}
+
+  #sheet{
+    position:fixed; inset:0; z-index:50; background:rgba(60,20,10,.58);
+    display:flex; align-items:center; justify-content:center; padding:16px;
+    opacity:0; pointer-events:none; transition:opacity .25s;
+    backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+  }
+  #sheet.show{opacity:1; pointer-events:auto;}
+  #sheetInner{
+    position:relative;
+    width:min(90vw,350px); background:#fffaf0; border-radius:20px; padding:13px 13px 15px;
+    box-shadow:0 24px 60px rgba(60,10,0,.4); transform:scale(.92);
+    transition:transform .28s cubic-bezier(.34,1.4,.64,1);
+    max-height:94vh; overflow:auto;
+  }
+  #sheet.show #sheetInner{transform:scale(1);}
+  #posterWrap{border-radius:12px; overflow:hidden; background:#fff6e8;}
+  #poster{display:block; width:100%; height:auto;}
+  #sheetTip{text-align:center; font-size:12.5px; color:#9a5a2c; margin:9px 0 11px; line-height:1.55;}
+  #sheetBtns{display:flex; gap:8px;}
+  #sheetBtns .btn{flex:1; justify-content:center; padding:11px 6px; font-size:13px;}
+  #closeSheet{
+    position:absolute; top:22px; right:22px; width:30px; height:30px; border-radius:50%;
+    border:none; background:rgba(0,0,0,.35); color:#fff; font-size:17px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; line-height:1; z-index:2;
+  }
+
+  #toast{
+    position:fixed; left:50%; bottom:11%; transform:translate(-50%,10px);
+    background:rgba(50,15,8,.9); color:#fff; padding:9px 16px; border-radius:999px;
+    font-size:13.5px; z-index:99; opacity:0; transition:all .25s; pointer-events:none;
+    max-width:82vw; text-align:center;
+  }
+  #toast.show{opacity:1; transform:translate(-50%,0);}
+
+  @media (max-height:720px){
+    #stage{width:min(80vw,58vh,380px);}
+    #actions{bottom:-19%;}
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <svg id="rays" viewBox="0 0 200 200" aria-hidden="true"><g fill="#ffd88a" opacity=".9"></g></svg>
+  <div id="wave"></div>
+  <div id="die" role="button" tabindex="0" aria-label="点击掷骰子">
+    <div id="face"><div id="glyph"></div></div>
+  </div>
+  <div id="title">掷骰子…</div>
+  <div id="result"></div>
+  <div id="hint">点一下骰子，掷出你的生肖</div>
+
+  <div id="actions">
+    <button class="btn primary" id="btnShare">📤 分享给朋友</button>
+    <button class="btn" id="btnPoster">🖼 生成海报</button>
+  </div>
+</div>
+
+<div id="sheet">
+  <div id="sheetInner">
+    <button id="closeSheet" aria-label="关闭">×</button>
+    <div id="posterWrap"><canvas id="poster"></canvas></div>
+    <p id="sheetTip">长按图片即可保存到相册，发给朋友一起抽生肖</p>
+    <div id="sheetBtns">
+      <button class="btn" id="btnSave">💾 保存图片</button>
+      <button class="btn primary" id="btnCopy">🔗 复制链接</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const ZODIAC = [
+  {name:"鼠", emoji:"🐭", desc:"机灵聪慧，嗅觉敏锐，总能先人一步抓住机会。"},
+  {name:"牛", emoji:"🐮", desc:"踏实肯干，稳中求进，靠坚持把事做成。"},
+  {name:"虎", emoji:"🐯", desc:"勇猛果敢，气场全开，天生的领导者。"},
+  {name:"兔", emoji:"🐰", desc:"温和细腻，心思敏捷，人缘极好。"},
+  {name:"龙", emoji:"🐲", desc:"气宇轩昂，志向高远，自带主角光环。"},
+  {name:"蛇", emoji:"🐍", desc:"沉静睿智，洞察人心，深藏不露的智者。"},
+  {name:"马", emoji:"🐴", desc:"热情奔放，行动力强，永远在路上。"},
+  {name:"羊", emoji:"🐑", desc:"善良温和，富有艺术感，是团队的暖角。"},
+  {name:"猴", emoji:"🐵", desc:"机智灵活，点子不断，气氛担当。"},
+  {name:"鸡", emoji:"🐔", desc:"勤奋守时，做事有条理，细节控本控。"},
+  {name:"狗", emoji:"🐶", desc:"忠诚可靠，重情重义，朋友的靠山。"},
+  {name:"猪", emoji:"🐷", desc:"乐观随和，福气满满，天生好命体质。"},
+];
+
+const die    = document.getElementById("die");
+const glyph  = document.getElementById("glyph");
+const title  = document.getElementById("title");
+const result = document.getElementById("result");
+const wave   = document.getElementById("wave");
+const hint   = document.getElementById("hint");
+const stage  = document.getElementById("stage");
+const actions= document.getElementById("actions");
+const poster = document.getElementById("poster");
+const sheet  = document.getElementById("sheet");
+
+let rolling = false;
+let lastItem = null;
+
+(function buildRays(){
+  const g = document.querySelector("#rays g"), N = 14, rad = d => d*Math.PI/180;
+  for (let i=0;i<N;i++){
+    const a0 = i*360/N, a1 = a0 + (360/N)*0.9, r = 140;
+    const p = document.createElementNS("http://www.w3.org/2000/svg","polygon");
+    p.setAttribute("points", `100,100 ${(100+Math.cos(rad(a0))*r).toFixed(1)},${(100+Math.sin(rad(a0))*r).toFixed(1)} ${(100+Math.cos(rad(a1))*r).toFixed(1)},${(100+Math.sin(rad(a1))*r).toFixed(1)}`);
+    g.appendChild(p);
+  }
+})();
+
+function setGlyph(item){
+  glyph.textContent = item.emoji;
+  glyph.style.fontSize = "clamp(44px, 14vw, 78px)";
+}
+
+function randInt(n){
+  if (window.crypto && window.crypto.getRandomValues){
+    const a = new Uint32Array(1);
+    const limit = Math.floor(0xFFFFFFFF / n) * n;
+    do { window.crypto.getRandomValues(a); } while (a[0] >= limit);
+    return a[0] % n;
+  }
+  return Math.floor(Math.random() * n);
+}
+
+function roll(){
+  if (rolling) return;
+  rolling = true;
+
+  hint.style.display = "none";
+  actions.classList.remove("show");
+  result.classList.remove("show");
+  title.classList.remove("show");
+  die.classList.remove("landed");
+
+  const finalItem = ZODIAC[randInt(ZODIAC.length)];
+
+  const flicker = setInterval(() => {
+    setGlyph(ZODIAC[randInt(ZODIAC.length)]);
+  }, 70);
+
+  die.classList.add("rolling");
+  title.textContent = "掷骰子…";
+  title.classList.add("show");
+
+  const duration = 1100 + randInt(500);
+
+  setTimeout(() => {
+    clearInterval(flicker);
+    die.classList.remove("rolling");
+    setGlyph(finalItem);
+    die.classList.add("landed");
+
+    wave.classList.remove("go"); void wave.offsetWidth; wave.classList.add("go");
+    flash();
+    title.textContent = "掷到了";
+    result.textContent = finalItem.name;
+    setTimeout(() => result.classList.add("show"), 90);
+    sparks();
+
+    lastItem = finalItem;
+
+    setTimeout(() => {
+      rolling = false;
+      hint.style.display = "block";
+      hint.textContent = "再点一下，重新掷一次";
+      actions.classList.add("show");
+    }, 620);
+  }, duration);
+}
+
+function flash(){
+  const f = document.createElement("div");
+  f.style.cssText = "position:absolute;inset:0;background:#fff8e6;z-index:5;border-radius:8%;pointer-events:none;opacity:.85;transition:opacity .22s";
+  stage.appendChild(f);
+  requestAnimationFrame(() => { f.style.opacity = "0"; });
+  setTimeout(() => f.remove(), 300);
+}
+
+function sparks(){
+  const r = die.getBoundingClientRect(), s = stage.getBoundingClientRect();
+  const cx = r.left - s.left + r.width/2, cy = r.top - s.top + r.height/2;
+  for (let i=0;i<12;i++){
+    const sp = document.createElement("div");
+    sp.className = "spark";
+    sp.style.left = cx+"px"; sp.style.top = cy+"px";
+    stage.appendChild(sp);
+    const ang = (i/12)*Math.PI*2 + Math.random()*.4;
+    const dist = 90 + Math.random()*70;
+    sp.animate([
+      {transform:"translate(-50%,-50%) scale(1)", opacity:1},
+      {transform:`translate(calc(-50% + ${Math.cos(ang)*dist}px), calc(-50% + ${Math.sin(ang)*dist}px)) scale(0)`, opacity:0}
+    ], {duration:600+Math.random()*220, easing:"cubic-bezier(.2,.7,.3,1)"}).onfinish = () => sp.remove();
+  }
+}
+
+die.addEventListener("click", roll);
+die.addEventListener("keydown", e => { if (e.key==="Enter"||e.key===" "){ e.preventDefault(); roll(); }});
+
+/* ---------- 海报 ---------- */
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+function drawPoster(item){
+  const W = 750, H = 1000;
+  poster.width = W; poster.height = H;
+  const ctx = poster.getContext("2d");
+  ctx.setTransform(1,0,0,1,0,0);
+
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,"#fff7ea"); g.addColorStop(1,"#ffd6b2");
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+
+  ctx.save();
+  ctx.translate(W/2, 430);
+  ctx.fillStyle = "rgba(255,205,110,.22)";
+  for (let i=0;i<16;i++){
+    ctx.beginPath(); ctx.moveTo(0,0);
+    const a0 = i*Math.PI*2/16, a1 = a0 + Math.PI/16*0.95;
+    ctx.lineTo(Math.cos(a0)*1200, Math.sin(a0)*1200);
+    ctx.lineTo(Math.cos(a1)*1200, Math.sin(a1)*1200);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+
+  const FONT = "-apple-system,'PingFang SC','Microsoft YaHei',sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+
+  ctx.font = "900 54px " + FONT;
+  ctx.lineWidth = 12; ctx.strokeStyle = "#8e1414"; ctx.lineJoin = "round";
+  ctx.strokeText("十二生肖掷骰子", W/2, 118);
+  ctx.fillStyle = "#ffe9ae"; ctx.fillText("十二生肖掷骰子", W/2, 118);
+
+  ctx.font = "600 25px " + FONT;
+  ctx.fillStyle = "rgba(150,70,25,.72)";
+  ctx.fillText("来掷一把，看看你今天的生肖", W/2, 163);
+
+  const S = 300, X = (W-S)/2, Y = 222;
+  rr(ctx, X, Y, S, S, 48);
+  const dg = ctx.createLinearGradient(X, Y, X+S, Y+S);
+  dg.addColorStop(0,"#e53935"); dg.addColorStop(1,"#a31717");
+  ctx.fillStyle = dg; ctx.fill();
+  ctx.lineWidth = 14; ctx.strokeStyle = "#7d1010"; ctx.stroke();
+  rr(ctx, X+16, Y+16, S-32, S-32, 36);
+  ctx.lineWidth = 5; ctx.strokeStyle = "#ffc63a"; ctx.stroke();
+
+  rr(ctx, X+38, Y+38, S-76, S-76, 30);
+  ctx.fillStyle = "#fffcf4"; ctx.fill();
+  ctx.lineWidth = 4; ctx.strokeStyle = "rgba(255,200,90,.95)"; ctx.stroke();
+
+  ctx.font = "170px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(item.emoji, W/2, Y + S/2 + 4);
+
+  ctx.textBaseline = "alphabetic";
+  ctx.font = "900 92px " + FONT;
+  ctx.lineWidth = 16; ctx.strokeStyle = "#8e1414"; ctx.lineJoin = "round";
+  ctx.strokeText(item.name, W/2, 632);
+  ctx.fillStyle = "#ffc63a"; ctx.fillText(item.name, W/2, 632);
+
+  ctx.font = "700 27px " + FONT;
+  ctx.fillStyle = "#a8501f";
+  ctx.fillText("生 肖 · " + item.name, W/2, 674);
+
+  ctx.font = "500 23px " + FONT;
+  ctx.fillStyle = "rgba(120,60,20,.82)";
+  wrapText(ctx, item.desc, W/2, 724, 560, 36);
+
+  const by = 882;
+  rr(ctx, W/2-248, by-44, 496, 74, 37);
+  ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = "rgba(198,40,40,.28)"; ctx.stroke();
+  ctx.font = "700 26px " + FONT;
+  ctx.fillStyle = "#c62828";
+  ctx.fillText("点开链接，掷出你的生肖 →", W/2, by+4);
+
+  ctx.font = "500 19px " + FONT;
+  ctx.fillStyle = "rgba(150,90,50,.6)";
+  ctx.fillText(location.host, W/2, H-38);
+}
+
+function wrapText(ctx, text, cx, y, maxW, lh){
+  let line = "", lines = [];
+  for (const ch of text){
+    if (ctx.measureText(line + ch).width > maxW){ lines.push(line); line = ch; }
+    else line += ch;
+  }
+  lines.push(line);
+  lines.forEach((l,i) => ctx.fillText(l, cx, y + i*lh));
+}
+
+function openSheet(){
+  drawPoster(lastItem || ZODIAC[0]);
+  sheet.classList.add("show");
+}
+
+document.getElementById("btnPoster").addEventListener("click", openSheet);
+
+document.getElementById("btnShare").addEventListener("click", async () => {
+  const data = {
+    title: "十二生肖掷骰子",
+    text: "点一下骰子，随机掷出你的生肖！快来试试手气～",
+    url: location.href,
+  };
+  if (navigator.share){
+    try { await navigator.share(data); return; } catch(e){ /* 取消则降级 */ }
+  }
+  openSheet();
+});
+
+document.getElementById("closeSheet").addEventListener("click", () => sheet.classList.remove("show"));
+sheet.addEventListener("click", e => { if (e.target === sheet) sheet.classList.remove("show"); });
+
+document.getElementById("btnCopy").addEventListener("click", async () => {
+  const url = location.href;
+  try{
+    await navigator.clipboard.writeText(url);
+    toast("链接已复制，去粘贴给朋友吧");
+  }catch(e){
+    const ta = document.createElement("textarea");
+    ta.value = url; document.body.appendChild(ta); ta.select();
+    document.execCommand("copy"); ta.remove();
+    toast("链接已复制");
+  }
+});
+
+document.getElementById("btnSave").addEventListener("click", () => {
+  const name = (lastItem || ZODIAC[0]).name;
+  poster.toBlob(blob => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "十二生肖_" + name + ".png";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    toast("图片已保存到相册/下载");
+  }, "image/png");
+});
+
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+setGlyph(ZODIAC[0]);
+title.textContent = "";
+</script>
+</body>
+</html>

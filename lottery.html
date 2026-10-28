@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#b71c1c">
+<title>数字抽签 · 1-49 随机抽号</title>
+<meta name="description" content="点击抽签，从 1-49 中随机抽出一个号码。支持批量抽号、免重复抽签。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="数字抽签 · 1-49 随机抽号">
+<meta property="og:description" content="点击抽签，从 1-49 中随机抽出一个号码，快来试试手气～">
+<style>
+  :root{
+    --red:#c62828; --red-deep:#8e1414; --gold:#ffc63a; --gold-lt:#ffe9ae;
+    --bg1:#fff7ea; --bg2:#ffdcb8; --ink:#8a4a1e;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0;}
+  body{
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(180deg,var(--bg1),var(--bg2));
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    user-select:none;overflow-x:hidden;
+  }
+  #app{
+    width:min(94vw,440px); padding:22px 0 30px;
+    display:flex;flex-direction:column;align-items:center;gap:14px;
+  }
+  h1{
+    margin:0;font-size:clamp(22px,6vw,30px);font-weight:900;
+    color:var(--gold-lt);letter-spacing:2px;
+    -webkit-text-stroke:7px var(--red-deep);paint-order:stroke fill;
+    text-shadow:0 4px 0 rgba(142,20,20,.3);
+  }
+  .sub{font-size:13px;color:#a8612c;margin:-6px 0 0;letter-spacing:.5px;}
+
+  /* 签筒 */
+  #tube{
+    position:relative;width:min(78vw,300px);aspect-ratio:.72/1;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  #tube:active{transform:scale(.985);}
+  .tube-body{
+    position:relative;width:100%;height:100%;
+    border-radius:14px 14px 26px 26px;
+    background:linear-gradient(115deg,#d43a2f 0%,#b71c1c 38%,#8e1414 72%,#6d0f0f 100%);
+    box-shadow:0 18px 36px rgba(110,15,15,.35),
+               inset 0 3px 0 rgba(255,255,255,.22),
+               inset 0 -8px 22px rgba(0,0,0,.3);
+    overflow:hidden;
+  }
+  /* 竹纹 */
+  .tube-body::before{
+    content:"";position:absolute;inset:0;opacity:.16;
+    background:repeating-linear-gradient(90deg,
+      rgba(255,255,255,.5) 0 1px, transparent 1px 22px);
+  }
+  /* 金色描边 */
+  .tube-body::after{
+    content:"";position:absolute;inset:10px;border-radius:9px 9px 20px 20px;
+    border:2px solid rgba(255,198,58,.55);pointer-events:none;
+  }
+  /* 筒口 */
+  .tube-mouth{
+    position:absolute;top:-2px;left:6%;right:6%;height:26px;
+    border-radius:50%;
+    background:radial-gradient(ellipse at 50% 35%, #4a0808 0%, #6d0f0f 55%, #8e1414 100%);
+    box-shadow:inset 0 6px 10px rgba(0,0,0,.6);
+    z-index:3;
+  }
+  .tube-mouth::after{
+    content:"";position:absolute;inset:4px 8px;
+    border-radius:50%;border:2px solid rgba(255,198,58,.5);
+  }
+  /* 签身上轴：若干根签露头 */
+  .sticks{
+    position:absolute;top:-34px;left:14%;right:14%;height:44px;z-index:2;
+    display:flex;justify-content:center;gap:4px;overflow:hidden;
+  }
+  .stick-top{
+    width:7px;height:40px;border-radius:3px;
+    background:linear-gradient(180deg,#ffe9ae,#e8b45a 60%,#c98a35);
+    box-shadow:0 2px 4px rgba(0,0,0,.25);
+  }
+  /* 筒身文字 */
+  .tube-label{
+    position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);
+    text-align:center;z-index:4;pointer-events:none;
+  }
+  .tube-label span{
+    display:inline-block;
+    font-size:clamp(26px,9vw,38px);font-weight:900;letter-spacing:14px;
+    color:transparent;text-indent:14px;
+    background:linear-gradient(180deg,#fff3c4,#ffc63a 45%,#d99524);
+    -webkit-background-clip:text;background-clip:text;
+    filter:drop-shadow(0 2px 2px rgba(0,0,0,.55));
+  }
+
+  /* 签筒摇动 */
+  @keyframes wobble{
+    0%{transform:rotate(0) translateX(0);}
+    15%{transform:rotate(-7deg) translateX(-6px);}
+    30%{transform:rotate(6deg) translateX(5px);}
+    45%{transform:rotate(-5deg) translateX(-4px);}
+    60%{transform:rotate(5deg) translateX(4px);}
+    75%{transform:rotate(-3deg) translateX(-2px);}
+    100%{transform:rotate(0) translateX(0);}
+  }
+  #tube.shaking .tube-body{animation:wobble .2s linear infinite;}
+  #tube.shaking .sticks .stick-top{animation:stickJump .18s ease-in-out infinite;}
+  #tube.shaking .sticks .stick-top:nth-child(2n){animation-delay:.05s;}
+  #tube.shaking .sticks .stick-top:nth-child(3n){animation-delay:.1s;}
+  @keyframes stickJump{
+    0%,100%{transform:translateY(0);}
+    50%{transform:translateY(-7px);}
+  }
+
+  /* 结果号码 */
+  #resultBox{
+    min-height:150px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:6px;position:relative;
+  }
+  #num{
+    font-size:clamp(76px,26vw,112px);font-weight:900;line-height:1;
+    color:var(--gold);letter-spacing:-2px;
+    -webkit-text-stroke:9px var(--red-deep);paint-order:stroke fill;
+    text-shadow:0 7px 0 rgba(142,20,20,.28);
+    opacity:0;transform:scale(.4);
+    transition:opacity .16s, transform .5s cubic-bezier(.34,1.56,.64,1);
+  }
+  #num.show{opacity:1;transform:scale(1);}
+  #num.idle{
+    font-size:clamp(20px,5.5vw,24px);-webkit-text-stroke:0;
+    color:#b0632c;letter-spacing:2px;text-shadow:none;font-weight:700;
+  }
+  #drawTag{
+    font-size:13px;color:#a8612c;letter-spacing:1px;opacity:0;transition:opacity .25s;
+  }
+  #drawTag.show{opacity:1;}
+
+  /* 按钮 */
+  #btnDraw{
+    width:min(66vw,240px);height:56px;border-radius:999px;border:none;
+    font-family:inherit;font-size:19px;font-weight:900;letter-spacing:4px;color:#fff;
+    background:linear-gradient(145deg,#e53935,#b71c1c);
+    box-shadow:0 10px 22px rgba(183,28,28,.38),inset 0 2px 0 rgba(255,255,255,.28);
+    cursor:pointer;transition:transform .12s, box-shadow .12s;
+  }
+  #btnDraw:active{transform:translateY(2px) scale(.98);box-shadow:0 5px 12px rgba(183,28,28,.35);}
+  #btnDraw:disabled{opacity:.6;cursor:default;}
+
+  #actions{display:flex;gap:8px;margin-top:2px;}
+  .btn{
+    border:2px solid rgba(198,40,40,.2);background:#fff;color:var(--red);
+    font-family:inherit;font-size:13px;font-weight:700;padding:9px 14px;
+    border-radius:999px;cursor:pointer;box-shadow:0 4px 10px rgba(150,50,20,.12);
+  }
+  .btn:active{transform:scale(.96);}
+
+  /* 历史 */
+  #history{
+    width:100%;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;
+    max-height:96px;overflow:auto;padding:0 4px;
+  }
+  #history .chip{
+    font-size:13px;font-weight:800;color:#fff;
+    background:linear-gradient(145deg,#d8433a,#a81f1a);
+    border-radius:8px;padding:4px 9px;min-width:34px;text-align:center;
+    box-shadow:0 2px 5px rgba(150,30,20,.25);
+    animation:chipIn .3s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes chipIn{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
+
+  #toast{
+    position:fixed;left:50%;bottom:12%;transform:translate(-50%,10px);
+    background:rgba(50,15,8,.9);color:#fff;padding:9px 16px;border-radius:999px;
+    font-size:13px;opacity:0;transition:all .25s;pointer-events:none;z-index:99;
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0);}
+
+  /* 星点 */
+  .spark{position:fixed;width:9px;height:9px;border-radius:50%;pointer-events:none;z-index:60;
+    background:radial-gradient(circle,#fff9d8,#ffc63a);}
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>数字抽签</h1>
+  <p class="sub">1 - 49 · 摇一摇，抽一个</p>
+
+  <div id="tube" role="button" tabindex="0" aria-label="点击抽签">
+    <div class="sticks">
+      <div class="stick-top"></div><div class="stick-top"></div><div class="stick-top"></div>
+      <div class="stick-top"></div><div class="stick-top"></div><div class="stick-top"></div>
+      <div class="stick-top"></div>
+    </div>
+    <div class="tube-body">
+      <div class="tube-label"><span>签</span></div>
+    </div>
+    <div class="tube-mouth"></div>
+  </div>
+
+  <div id="resultBox">
+    <div id="num" class="idle">点击下方按钮抽签</div>
+    <div id="drawTag"></div>
+  </div>
+
+  <button id="btnDraw">抽 签</button>
+
+  <div id="actions">
+    <button class="btn" id="btnBatch">一次抽 5 个</button>
+    <button class="btn" id="btnClear">清空记录</button>
+  </div>
+
+  <div id="history"></div>
+</div>
+<div id="toast"></div>
+
+<script>
+const MIN = 1, MAX = 49;
+const numEl   = document.getElementById("num");
+const tagEl   = document.getElementById("drawTag");
+const tube    = document.getElementById("tube");
+const btnDraw = document.getElementById("btnDraw");
+const historyEl = document.getElementById("history");
+
+let drawing = false;
+let history = [];
+
+/* 加密级随机，等概率 */
+function randInt(n){
+  if (window.crypto && window.crypto.getRandomValues){
+    const a = new Uint32Array(1);
+    const limit = Math.floor(0xFFFFFFFF / n) * n;
+    do { crypto.getRandomValues(a); } while (a[0] >= limit);
+    return a[0] % n;
+  }
+  return Math.floor(Math.random() * n);
+}
+const randRange = (min, max) => min + randInt(max - min + 1);
+
+function draw(){
+  if (drawing) return;
+  drawing = true;
+  btnDraw.disabled = true;
+
+  numEl.classList.remove("show");
+  numEl.classList.add("idle");
+  numEl.textContent = "摇 签 中…";
+  tagEl.classList.remove("show");
+  tube.classList.add("shaking");
+
+  // 滚动数字
+  let tick = 0;
+  const flick = setInterval(() => {
+    numEl.textContent = randRange(MIN, MAX);
+    tick++;
+  }, 60);
+
+  const duration = 1200 + randInt(600);
+
+  setTimeout(() => {
+    clearInterval(flick);
+    tube.classList.remove("shaking");
+
+    const n = randRange(MIN, MAX);
+    numEl.classList.remove("idle");
+    numEl.textContent = n;
+
+    // 重放弹出动画
+    void numEl.offsetWidth;
+    setTimeout(() => numEl.classList.add("show"), 30);
+
+    const firstDraw = history.length === 0;
+    history.unshift(n);
+    if (history.length > 60) history.pop();
+    renderHistory();
+
+    tagEl.textContent = `第 ${history.length} 次抽签`;
+    setTimeout(() => tagEl.classList.add("show"), 200);
+
+    burst();
+
+    setTimeout(() => {
+      drawing = false;
+      btnDraw.disabled = false;
+    }, 420);
+  }, duration);
+}
+
+function batch(){
+  if (drawing) return;
+  drawing = true;
+  btnDraw.disabled = true;
+  tube.classList.add("shaking");
+  numEl.classList.remove("show");
+  numEl.classList.add("idle");
+  numEl.textContent = "摇 签 中…";
+
+  let tick = 0;
+  const flick = setInterval(() => {
+    numEl.textContent = randRange(MIN, MAX);
+    tick++;
+  }, 55);
+
+  setTimeout(() => {
+    clearInterval(flick);
+    tube.classList.remove("shaking");
+
+    // 不重复抽 5 个
+    const picked = new Set();
+    while (picked.size < 5) picked.add(randRange(MIN, MAX));
+    const arr = [...picked].sort((a,b) => a-b);
+
+    numEl.classList.remove("idle");
+    numEl.style.fontSize = "clamp(30px,8vw,42px)";
+    numEl.textContent = arr.join("  ");
+    void numEl.offsetWidth;
+    setTimeout(() => {
+      numEl.classList.add("show");
+      numEl.style.fontSize = "";
+    }, 30);
+
+    arr.forEach(v => history.unshift(v));
+    if (history.length > 60) history = history.slice(0, 60);
+    renderHistory();
+
+    tagEl.textContent = "本次抽中 5 个号码";
+    setTimeout(() => tagEl.classList.add("show"), 200);
+    burst();
+
+    setTimeout(() => { drawing = false; btnDraw.disabled = false; }, 420);
+  }, 1000 + randInt(500));
+}
+
+function renderHistory(){
+  historyEl.innerHTML = "";
+  history.forEach(v => {
+    const c = document.createElement("span");
+    c.className = "chip";
+    c.textContent = v;
+    historyEl.appendChild(c);
+  });
+}
+
+function burst(){
+  const r = numEl.getBoundingClientRect();
+  const cx = r.left + r.width/2, cy = r.top + r.height/2;
+  for (let i=0;i<14;i++){
+    const s = document.createElement("div");
+    s.className = "spark";
+    s.style.left = cx+"px"; s.style.top = cy+"px";
+    document.body.appendChild(s);
+    const a = (i/14)*Math.PI*2 + Math.random()*.4;
+    const d = 70 + Math.random()*90;
+    s.animate([
+      {transform:"translate(-50%,-50%) scale(1)", opacity:1},
+      {transform:`translate(calc(-50% + ${Math.cos(a)*d}px), calc(-50% + ${Math.sin(a)*d}px)) scale(0)`, opacity:0}
+    ], {duration:520+Math.random()*260, easing:"cubic-bezier(.2,.7,.3,1)"})
+     .onfinish = () => s.remove();
+  }
+}
+
+btnDraw.addEventListener("click", draw);
+tube.addEventListener("click", draw);
+tube.addEventListener("keydown", e => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); draw(); }
+});
+document.getElementById("btnBatch").addEventListener("click", batch);
+document.getElementById("btnClear").addEventListener("click", () => {
+  history = [];
+  renderHistory();
+  numEl.className = "idle";
+  numEl.textContent = "点击下方按钮抽签";
+  tagEl.classList.remove("show");
+  toast("已清空记录");
+});
+
+let tt;
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(tt);
+  tt = setTimeout(() => t.classList.remove("show"), 1800);
+}
+</script>
+</body>
+</html>
