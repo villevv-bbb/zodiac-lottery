@@ -4,17 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#7a1010">
-<title>上上签 · 摇一摇，抽一支属于你的签</title>
+<title>财富密码 · 摇一摇，抽一支属于你的签</title>
 <meta name="description" content="摇一摇手机，从签筒里抽出一支签——上上签/上签/中签，看看你的签运！">
 <meta itemprop="image" content="./share-lottery.png">
 <meta property="og:type" content="website">
-<meta property="og:title" content="上上签 · 摇一摇，抽一支属于你的签">
+<meta property="og:title" content="财富密码 · 摇一摇，抽一支属于你的签">
 <meta property="og:description" content="摇一摇手机，从签筒里抽出一支签，看看你的签运！">
 <meta property="og:image" content="./share-lottery.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="上上签 · 摇一摇，抽一支属于你的签">
+<meta name="twitter:title" content="财富密码 · 摇一摇，抽一支属于你的签">
 <meta name="twitter:description" content="摇一摇手机，从签筒里抽出一支签，看看你的签运！">
 <meta name="twitter:image" content="./share-lottery.png">
 <style>
@@ -97,12 +97,16 @@
   /* 竖排文字 */
   #label{
     position:absolute;inset:0;z-index:4;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:.12em;padding-bottom:8%;
+    display:flex;flex-wrap:wrap;justify-content:center;align-items:center;
+    align-content:center;
+    width:76%;margin:0 auto;left:0;right:0;
+    gap:.06em .1em;padding-bottom:10%;
   }
   #label .ch{
+    width:44%;
+    display:flex;align-items:center;justify-content:center;
     font-family:"Songti SC","STSong","SimSun",serif;
-    font-size:clamp(30px,9.5vw,42px);font-weight:900;line-height:1.08;
+    font-size:clamp(26px,8vw,36px);font-weight:900;line-height:1.1;
     color:#ffe9a8;letter-spacing:0;
     text-shadow:
       0 2px 0 #b8842a,
@@ -257,15 +261,16 @@
 </head>
 <body>
 <div id="app">
-  <div id="title">上 上 签</div>
+  <div id="title">财 富 密 码</div>
 
   <div id="tubeWrap">
     <div id="sticksInTube"></div>
     <div id="tube">
       <div id="label">
-        <span class="ch">上</span>
-        <span class="ch">上</span>
-        <span class="ch">签</span>
+        <span class="ch">财</span>
+        <span class="ch">密</span>
+        <span class="ch">富</span>
+        <span class="ch">码</span>
       </div>
     </div>
     <div id="mouth"></div>
