@@ -106,7 +106,7 @@
     <h3>访问明细（最近 500 条）</h3>
     <div class="scroll"><table id="tbl">
       <thead><tr>
-        <th>进入时间</th><th>IP</th><th>次数</th><th>停留时长</th>
+        <th>进入时间</th><th>IP</th><th>所在地</th><th>次数</th><th>停留时长</th>
         <th>设备</th><th>浏览器</th><th>是否抽签</th><th>来源</th>
       </tr></thead>
       <tbody></tbody>
@@ -117,7 +117,7 @@
     <h3>IP 汇总（按访问次数）</h3>
     <div class="scroll"><table id="tblIp">
       <thead><tr>
-        <th>IP</th><th>访问次数</th><th>独立访客</th><th>平均停留</th><th>首次</th><th>最近</th>
+        <th>IP</th><th>所在地</th><th>访问次数</th><th>独立访客</th><th>平均停留</th><th>首次</th><th>最近</th>
       </tr></thead>
       <tbody></tbody>
     </table></div>
@@ -224,13 +224,14 @@ function renderTable(data){
 
   const tb = document.querySelector("#tbl tbody");
   if (!data.length){
-    tb.innerHTML = '<tr><td colspan="8" class="empty">暂无数据</td></tr>';
+    tb.innerHTML = '<tr><td colspan="9" class="empty">暂无数据</td></tr>';
     return;
   }
   tb.innerHTML = data.map(r => `
     <tr>
       <td>${fmtTime(r.entered_at)}</td>
       <td>${r.ip || "-"}</td>
+      <td>${r.location || '<span style="color:#7a665c">-</span>'}</td>
       <td class="num">${ipCountMap.get(r.ip) || 1}</td>
       <td class="num">${fmtDur(r.duration)}</td>
       <td>${r.device || "-"}${r.os ? " · " + r.os : ""}</td>
@@ -245,8 +246,9 @@ async function loadIpSummary(){
   const map = new Map();
   rows.forEach(r => {
     const k = r.ip || "unknown";
-    if (!map.has(k)) map.set(k, {ip:k, visits:0, visitors:new Set(), dur:[], first:r.entered_at, last:r.entered_at});
+    if (!map.has(k)) map.set(k, {ip:k, loc:"", visits:0, visitors:new Set(), dur:[], first:r.entered_at, last:r.entered_at});
     const o = map.get(k);
+    if (!o.loc && r.location) o.loc = r.location;
     o.visits++;
     o.visitors.add(r.visitor_id);
     if (r.duration) o.dur.push(r.duration);
@@ -255,12 +257,13 @@ async function loadIpSummary(){
   });
   const arr = [...map.values()].sort((a,b) => b.visits - a.visits).slice(0, 100);
   if (!arr.length){
-    tb.innerHTML = '<tr><td colspan="6" class="empty">暂无数据</td></tr>';
+    tb.innerHTML = '<tr><td colspan="7" class="empty">暂无数据</td></tr>';
     return;
   }
   tb.innerHTML = arr.map(o => `
     <tr>
       <td>${o.ip}</td>
+      <td>${o.loc || '<span style="color:#7a665c">-</span>'}</td>
       <td class="num">${o.visits}</td>
       <td class="num">${o.visitors.size}</td>
       <td class="num">${o.dur.length ? fmtDur(Math.round(o.dur.reduce((a,b)=>a+b,0)/o.dur.length)) : "-"}</td>
@@ -385,6 +388,7 @@ document.getElementById("exportCsv").onclick = () => {
   const cols = [
     {label:"进入时间", get:r => fmtTime(r.entered_at)},
     {label:"IP", get:r => r.ip},
+    {label:"所在地", get:r => r.location || ""},
     {label:"访问次数", get:r => ipCountMap.get(r.ip) || 1},
     {label:"停留秒数", get:r => r.duration || 0},
     {label:"停留时长", get:r => fmtDur(r.duration)},

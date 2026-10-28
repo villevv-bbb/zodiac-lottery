@@ -78,18 +78,40 @@
     };
   }
 
-  /* ====== 取真实公网 IP ====== */
+  /* ====== 取真实公网 IP + 归属地 ====== */
+  var locCache = null;
   function fetchIP() {
     var cached = lsGet("vp_ip");
     var ts = parseInt(lsGet("vp_ip_ts") || "0", 10);
     // 缓存 30 分钟，避免每次都请求
-    if (cached && Date.now() - ts < 30 * 60 * 1000) return Promise.resolve(cached);
+    if (cached && Date.now() - ts < 30 * 60 * 1000) {
+      return Promise.resolve({ ip: cached, loc: lsGet("vp_loc") || "" });
+    }
 
+    // ipwho.is 一次同时返回 IP 和归属地，且支持跨域
     var apis = [
-      { url: "https://api64.ipify.org?format=json", pick: function (d) { return d.ip; } },
-      { url: "https://api.ip.sb/jsonip", pick: function (d) { return d.ip; } },
-      { url: "https://ipwho.is/", pick: function (d) { return d.success === false ? null : d.ip; } },
-      { url: "https://api.ipify.org?format=json", pick: function (d) { return d.ip; } }
+      { url: "https://ipwho.is/",
+        pick: function (d) {
+          if (d.success === false || !d.ip) return null;
+          var parts = [];
+          if (d.country) parts.push(d.country);
+          if (d.province || d.region) parts.push(d.province || d.region);
+          if (d.city) parts.push(d.city);
+          return { ip: d.ip, loc: parts.join(" · ") };
+        } },
+      { url: "https://api.ip.sb/geoip",
+        pick: function (d) {
+          if (!d.ip) return null;
+          var parts = [];
+          if (d.country) parts.push(d.country);
+          if (d.region) parts.push(d.region);
+          if (d.city) parts.push(d.city);
+          return { ip: d.ip, loc: parts.join(" · ") };
+        } },
+      { url: "https://api64.ipify.org?format=json",
+        pick: function (d) { return d.ip ? { ip: d.ip, loc: "" } : null; } },
+      { url: "https://api.ipify.org?format=json",
+        pick: function (d) { return d.ip ? { ip: d.ip, loc: "" } : null; } }
     ];
 
     return apis.reduce(function (p, api) {
@@ -98,13 +120,18 @@
         return fetch(api.url, { cache: "no-store" })
           .then(function (r) { return r.json(); })
           .then(function (d) {
-            var ip = api.pick(d);
-            if (ip) { lsSet("vp_ip", ip); lsSet("vp_ip_ts", String(Date.now())); }
-            return ip || null;
+            var res = api.pick(d);
+            if (res && res.ip) {
+              lsSet("vp_ip", res.ip); lsSet("vp_ip_ts", String(Date.now()));
+              if (res.loc) { lsSet("vp_loc", res.loc); locCache = res.loc; }
+            }
+            return res || null;
           })
           .catch(function () { return null; });
       });
-    }, Promise.resolve(null)).then(function (ip) { return ip || "unknown"; });
+    }, Promise.resolve(null)).then(function (res) {
+      return res || { ip: "unknown", loc: locCache || lsGet("vp_loc") || "" };
+    });
   }
 
   /* ====== 上报 ====== */
@@ -133,15 +160,18 @@
   function seconds() { return Math.round((Date.now() - startAt) / 1000); }
 
   /* ====== 首次上报（进入） ====== */
+  var noLocCol = false;   // 若数据库还没有 location 列，降级为不带该字段
+
   function trackEnter() {
     var d = deviceInfo();
     var ref = document.referrer || "";
 
-    fetchIP().then(function (ip) {
+    fetchIP().then(function (res) {
       var payload = {
         site: SITE,
         page: PAGE,
-        ip: ip,
+        ip: res.ip,
+        location: res.loc || "",
         visitor_id: visitorId,
         session_id: sessionId,
         is_new_visitor: isNewVisitor,
@@ -158,21 +188,43 @@
         entered_at: new Date().toISOString()
       };
 
-      return fetch(SUPABASE_URL + "/rest/v1/" + TABLE + "?select=id", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": SUPABASE_ANON_KEY,
-          "Authorization": "Bearer " + SUPABASE_ANON_KEY,
-          "Prefer": "return=representation"
-        },
-        body: JSON.stringify(payload)
-      })
-        .then(function (r) { return r.json(); })
-        .then(function (rows) {
-          if (rows && rows[0] && rows[0].id) recordId = rows[0].id;
+      return insertRow(payload)
+        .catch(function (err) {
+          // 数据库没有 location 列时（PGRST204），去掉该字段重试一次
+          var msg = (err && err.message) || String(err);
+          if (!noLocCol && /location|PGRST204|column/i.test(msg)){
+            noLocCol = true;
+            var p2 = Object.assign({}, payload);
+            delete p2.location;
+            return insertRow(p2);
+          }
+          throw err;
         })
         .catch(function () {});
+    });
+  }
+
+  function insertRow(payload){
+    return fetch(SUPABASE_URL + "/rest/v1/" + TABLE + "?select=id", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+        "Prefer": "return=representation"
+      },
+      body: JSON.stringify(payload)
+    }).then(function (r) {
+      if (!r.ok) {
+        return r.text().then(function (t) {
+          var e = new Error(t || ("HTTP " + r.status));
+          e.status = r.status;
+          throw e;
+        });
+      }
+      return r.json();
+    }).then(function (rows) {
+      if (rows && rows[0] && rows[0].id) recordId = rows[0].id;
     });
   }
 
