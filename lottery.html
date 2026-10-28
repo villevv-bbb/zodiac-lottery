@@ -30,23 +30,89 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{height:100%;margin:0;overflow:hidden;}
   body{
-    background:
-      radial-gradient(ellipse at 50% 30%, #b3241d 0%, #8d1712 45%, #5e0c0a 100%);
+    background:#4d0a08;
     font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
     display:flex;align-items:center;justify-content:center;
     user-select:none;position:relative;
   }
-  /* 背景暗纹 */
-  body::before{
-    content:"";position:absolute;inset:0;pointer-events:none;opacity:.10;
-    background-image:radial-gradient(circle at 20% 15%, #ffd98a 0 1.5px, transparent 2px),
-                     radial-gradient(circle at 75% 60%, #ffd98a 0 1.5px, transparent 2px),
-                     radial-gradient(circle at 45% 85%, #ffd98a 0 1.2px, transparent 2px),
-                     radial-gradient(circle at 88% 25%, #ffd98a 0 1.2px, transparent 2px);
-    background-size:180px 180px,220px 220px,160px 160px,240px 240px;
+
+  /* ===== 背景氛围层 ===== */
+  #bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+  /* 1. 主光晕（呼吸） */
+  #bg .glow{
+    position:absolute;left:50%;top:34%;width:150vmax;height:150vmax;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(circle,
+        rgba(255,196,90,.30) 0%,
+        rgba(214,96,40,.20) 22%,
+        rgba(150,26,18,.12) 42%,
+        transparent 66%);
+    animation:glowBreath 7s ease-in-out infinite;
   }
+  @keyframes glowBreath{
+    0%,100%{opacity:.75;transform:translate(-50%,-50%) scale(1);}
+    50%{opacity:1;transform:translate(-50%,-50%) scale(1.09);}
+  }
+  /* 2. 顶部聚光 */
+  #bg .spot{
+    position:absolute;left:50%;top:-30%;width:120vw;height:110vh;
+    transform:translateX(-50%);
+    background:conic-gradient(from 170deg at 50% 0%,
+        transparent 0deg, rgba(255,220,150,.10) 14deg,
+        rgba(255,235,190,.20) 20deg, rgba(255,220,150,.10) 26deg, transparent 40deg);
+    filter:blur(6px);
+    animation:spotSway 9s ease-in-out infinite;
+  }
+  @keyframes spotSway{
+    0%,100%{transform:translateX(-50%) rotate(-3deg);opacity:.85;}
+    50%{transform:translateX(-50%) rotate(3deg);opacity:1;}
+  }
+  /* 3. 回纹底纹 */
+  #bg .pattern{
+    position:absolute;inset:0;opacity:.055;
+    background-image:
+      repeating-linear-gradient(45deg, #ffe0a0 0 2px, transparent 2px 26px),
+      repeating-linear-gradient(-45deg, #ffe0a0 0 2px, transparent 2px 26px);
+    background-size:52px 52px;
+    mask-image:radial-gradient(ellipse at 50% 45%, #000 20%, transparent 78%);
+    -webkit-mask-image:radial-gradient(ellipse at 50% 45%, #000 20%, transparent 78%);
+  }
+  /* 4. 暗角 */
+  #bg .vignette{
+    position:absolute;inset:0;
+    background:radial-gradient(ellipse at 50% 46%,
+        transparent 34%, rgba(50,4,2,.35) 72%, rgba(28,2,1,.78) 100%);
+  }
+  /* 5. 金尘 */
+  #dust{position:absolute;inset:0;}
+  .mote{
+    position:absolute;border-radius:50%;
+    background:#ffe2a0;
+    box-shadow:0 0 6px 2px rgba(255,205,120,.55);
+    animation:float linear infinite;
+    will-change:transform,opacity;
+  }
+  @keyframes float{
+    0%{transform:translate3d(0,0,0) scale(.6);opacity:0;}
+    12%{opacity:.9;}
+    80%{opacity:.7;}
+    100%{transform:translate3d(var(--dx),-118vh,0) scale(1.1);opacity:0;}
+  }
+  /* 6. 云气 */
+  #bg .cloud{
+    position:absolute;width:90vw;height:44vh;border-radius:50%;
+    background:radial-gradient(ellipse, rgba(255,150,90,.16), transparent 70%);
+    filter:blur(28px);
+  }
+  #bg .c1{left:-28vw;bottom:-8vh;animation:drift 22s ease-in-out infinite;}
+  #bg .c2{right:-30vw;bottom:6vh;animation:drift 28s ease-in-out infinite reverse;}
+  @keyframes drift{
+    0%,100%{transform:translate3d(0,0,0) scale(1);}
+    50%{transform:translate3d(6vw,-4vh,0) scale(1.12);}
+  }
+
   #app{
-    position:relative;width:min(94vw,430px);height:100%;
+    position:relative;z-index:2;width:min(94vw,430px);height:100%;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     padding:8px 0 16px;
   }
@@ -59,6 +125,26 @@
     display:flex;align-items:flex-end;justify-content:center;
     transition:transform .08s linear;
     will-change:transform;
+  }
+  @keyframes tubeFloat{
+    0%,100%{transform:translateY(0);}
+    50%{transform:translateY(-7px);}
+  }
+  /* 台面光池 + 倒影 */
+  #tubeWrap::before{
+    content:"";position:absolute;left:50%;bottom:-26px;
+    width:150%;height:52px;transform:translateX(-50%);
+    background:radial-gradient(ellipse at 50% 40%,
+        rgba(255,190,110,.36) 0%, rgba(255,140,60,.14) 42%, transparent 72%);
+    filter:blur(4px);z-index:-1;
+    animation:poolBreath 4s ease-in-out infinite;
+  }
+  @keyframes poolBreath{0%,100%{opacity:.75;}50%{opacity:1;}}
+  #tubeWrap::after{
+    content:"";position:absolute;left:50%;bottom:-14px;
+    width:88%;height:40px;transform:translateX(-50%) scaleY(.4);
+    background:linear-gradient(180deg, rgba(40,10,3,.55), transparent 80%);
+    border-radius:50%;filter:blur(7px);z-index:-2;
   }
   /* 筒身：圆柱木质 */
   #tube{
@@ -75,7 +161,34 @@
       inset 0 -22px 30px rgba(50,25,5,.4),
       0 26px 44px rgba(0,0,0,.45);
     overflow:hidden;
+    animation:tubeFloat 5.2s ease-in-out infinite;
   }
+  /* 高光扫过 */
+  #tube .sheen{
+    position:absolute;top:-30%;bottom:-30%;width:44%;left:-60%;
+    background:linear-gradient(100deg,
+        transparent 0%, rgba(255,245,215,.34) 42%,
+        rgba(255,255,245,.60) 50%, rgba(255,245,215,.30) 58%, transparent 100%);
+    transform:skewX(-14deg);
+    filter:blur(3px);
+    animation:sheenMove 6.5s ease-in-out infinite;
+    z-index:3;pointer-events:none;mix-blend-mode:screen;
+  }
+  @keyframes sheenMove{
+    0%{left:-70%;opacity:0;}
+    18%{opacity:1;}
+    55%{left:120%;opacity:.9;}
+    70%,100%{left:120%;opacity:0;}
+  }
+  /* 左右边缘暗边，加强圆柱感 */
+  #tube .edge{
+    position:absolute;inset:0;z-index:2;pointer-events:none;
+    border-radius:inherit;
+    background:linear-gradient(90deg,
+        rgba(50,22,3,.55) 0%, transparent 12%,
+        transparent 84%, rgba(45,20,3,.62) 100%);
+  }
+
   /* 顶部筒口（椭圆） */
   #mouth{
     position:absolute;top:-14px;left:-3%;width:106%;height:34px;
@@ -115,6 +228,17 @@
       0 3px 0 #8a5f18,
       0 4px 6px rgba(0,0,0,.55);
   }
+  /* 字面金色渐变 + 微光流动 */
+  #label .ch > i{
+    font-style:normal;
+    background:linear-gradient(175deg,#fff8dd 0%,#ffe9a8 26%,#f0c862 52%,#ffeec0 66%,#d9a83f 100%);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 2px 0 #9a6a1c) drop-shadow(0 6px 10px rgba(0,0,0,.5));
+    animation:goldFlow 5s ease-in-out infinite;
+  }
+  @keyframes goldFlow{0%,100%{filter:drop-shadow(0 2px 0 #9a6a1c) drop-shadow(0 6px 10px rgba(0,0,0,.5));}
+                     50%{filter:drop-shadow(0 2px 0 #9a6a1c) drop-shadow(0 6px 14px rgba(255,200,100,.45));}}
 
   /* 筒里的签（露出一截） */
   #sticksInTube{
@@ -196,6 +320,74 @@
   }
   #drawnStick.anim{animation:pullOut .82s cubic-bezier(.3,1.3,.5,1) forwards;}
 
+  /* 签后光轮 */
+  #halo{
+    position:absolute;left:50%;top:50%;z-index:19;
+    width:min(78vw,300px);aspect-ratio:1;
+    transform:translate(-50%,-52%) scale(.5);
+    border-radius:50%;
+    background:radial-gradient(circle,
+        rgba(255,246,214,.55) 0%,
+        rgba(255,206,110,.32) 26%,
+        rgba(255,150,60,.12) 48%,
+        transparent 70%);
+    opacity:0;pointer-events:none;
+    filter:blur(2px);
+  }
+  #halo.on{animation:haloPop 1.15s ease-out forwards;}
+  @keyframes haloPop{
+    0%{opacity:0;transform:translate(-50%,-52%) scale(.35);}
+    28%{opacity:1;transform:translate(-50%,-52%) scale(1.05);}
+    60%{opacity:.55;transform:translate(-50%,-52%) scale(1.15);}
+    100%{opacity:.26;transform:translate(-50%,-52%) scale(1.28);}
+  }
+  /* 金色光线 */
+  #rays{
+    position:absolute;left:50%;top:50%;z-index:18;
+    width:min(96vw,380px);aspect-ratio:1;
+    transform:translate(-50%,-52%);
+    opacity:0;pointer-events:none;
+    background:conic-gradient(from 0deg,
+      rgba(255,225,150,0) 0deg, rgba(255,225,150,.30) 3deg, rgba(255,225,150,0) 7deg,
+      rgba(255,225,150,0) 40deg, rgba(255,225,150,.22) 43deg, rgba(255,225,150,0) 47deg,
+      rgba(255,225,150,0) 82deg, rgba(255,225,150,.26) 85deg, rgba(255,225,150,0) 89deg,
+      rgba(255,225,150,0) 130deg, rgba(255,225,150,.20) 133deg, rgba(255,225,150,0) 137deg,
+      rgba(255,225,150,0) 176deg, rgba(255,225,150,.28) 179deg, rgba(255,225,150,0) 183deg,
+      rgba(255,225,150,0) 222deg, rgba(255,225,150,.22) 225deg, rgba(255,225,150,0) 229deg,
+      rgba(255,225,150,0) 268deg, rgba(255,225,150,.26) 271deg, rgba(255,225,150,0) 275deg,
+      rgba(255,225,150,0) 314deg, rgba(255,225,150,.20) 317deg, rgba(255,225,150,0) 321deg,
+      rgba(255,225,150,0) 360deg);
+    mask-image:radial-gradient(circle, #000 10%, transparent 62%);
+    -webkit-mask-image:radial-gradient(circle, #000 10%, transparent 62%);
+  }
+  #rays.on{animation:raySpin 2.2s ease-out forwards;}
+  @keyframes raySpin{
+    0%{opacity:0;transform:translate(-50%,-52%) rotate(0deg) scale(.6);}
+    22%{opacity:.95;}
+    100%{opacity:0;transform:translate(-50%,-52%) rotate(46deg) scale(1.15);}
+  }
+  /* 光爆圆环 */
+  .ring{
+    position:absolute;left:50%;top:50%;z-index:19;
+    width:60px;height:60px;border-radius:50%;
+    border:2px solid rgba(255,236,180,.85);
+    transform:translate(-50%,-50%) scale(.3);
+    pointer-events:none;
+    animation:ringOut .85s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  @keyframes ringOut{
+    0%{opacity:.95;transform:translate(-50%,-50%) scale(.3);}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(5.2);}
+  }
+  /* 签身微微发光 */
+  #drawnStick.show .stickFace{
+    box-shadow:
+      0 18px 40px rgba(0,0,0,.5),
+      0 0 36px rgba(255,214,130,.34),
+      inset 0 0 0 2px rgba(190,150,90,.45),
+      inset 0 0 22px rgba(190,160,110,.35);
+  }
+
   /* ========= 文字区 ========= */
   #hint{
     position:absolute;bottom:9%;left:0;right:0;text-align:center;
@@ -203,7 +395,14 @@
     text-shadow:0 2px 6px rgba(0,0,0,.5);
     animation:breathe 2s ease-in-out infinite;
   }
-  @keyframes breathe{0%,100%{opacity:.55}50%{opacity:1}}
+  #hint .dot{
+    display:inline-block;width:5px;height:5px;border-radius:50%;
+    background:#ffd76e;margin:0 8px 2px;vertical-align:middle;
+    box-shadow:0 0 8px 2px rgba(255,200,100,.7);
+    animation:dotPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes dotPulse{0%,100%{transform:scale(.7);opacity:.5;}50%{transform:scale(1.2);opacity:1;}}
+  @keyframes breathe{0%,100%{opacity:.62}50%{opacity:1}}
 
   #title{
     position:absolute;top:3.5%;left:0;right:0;text-align:center;z-index:8;
@@ -212,10 +411,30 @@
     color:#ffe9a8;text-indent:.3em;
     text-shadow:0 3px 0 #7a3d0e, 0 6px 16px rgba(0,0,0,.45);
   }
+  #title span{
+    background:linear-gradient(178deg,#fff9e2 0%,#ffe9a8 30%,#f2ca66 55%,#fff2cd 70%,#d9a83f 100%);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 2px 0 #7a3d0e) drop-shadow(0 5px 14px rgba(0,0,0,.5));
+  }
+  /* 标题下的金线装饰 */
+  #title::after{
+    content:"";display:block;margin:8px auto 0;width:56%;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(255,225,150,.75),transparent);
+    box-shadow:0 0 8px rgba(255,214,120,.6);
+  }
+  /* 呼吸光晕衬在标题后 */
+  #title::before{
+    content:"";position:absolute;left:50%;top:50%;width:210px;height:80px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse, rgba(255,190,90,.22), transparent 70%);
+    filter:blur(10px);z-index:-1;
+    animation:glowBreath 5s ease-in-out infinite;
+  }
 
   /* 结果说明 */
   #reading{
-    position:absolute;bottom:7%;left:0;right:0;z-index:8;
+    position:absolute;bottom:5.5%;left:0;right:0;z-index:8;
     text-align:center;opacity:0;transform:translateY(10px);
     transition:opacity .3s, transform .3s;
   }
@@ -230,12 +449,26 @@
     letter-spacing:.05em;padding:0 24px;line-height:1.6;
     text-shadow:0 2px 6px rgba(0,0,0,.5);
   }
+  #reading .line{
+    width:0;height:1px;margin:9px auto 0;
+    background:linear-gradient(90deg,transparent,rgba(255,220,140,.7),transparent);
+    transition:width .6s ease .1s;
+  }
+  #reading.show .line{width:64%;}
   #again{
     margin-top:12px;border:none;cursor:pointer;font-family:inherit;
     padding:9px 20px;border-radius:999px;font-size:13.5px;font-weight:700;
     color:#8a1410;background:linear-gradient(180deg,#ffe9a8,#e8b93f);
     box-shadow:0 6px 16px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.6);
+    position:relative;overflow:hidden;
   }
+  #again::after{
+    content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.75),transparent);
+    transform:skewX(-18deg);
+    animation:btnShine 3.2s ease-in-out infinite;
+  }
+  @keyframes btnShine{0%,55%{left:-60%;}90%,100%{left:130%;}}
   #again:active{transform:scale(.96);}
 
   /* 落下的签屑 */
@@ -262,21 +495,38 @@
 </style>
 </head>
 <body>
+<!-- 背景氛围 -->
+<div id="bg">
+  <div class="pattern"></div>
+  <div class="glow"></div>
+  <div class="spot"></div>
+  <div class="cloud c1"></div>
+  <div class="cloud c2"></div>
+  <div id="dust"></div>
+  <div class="vignette"></div>
+</div>
+
 <div id="app">
-  <div id="title">财 富 密 码</div>
+  <div id="title"><span>财 富 密 码</span></div>
 
   <div id="tubeWrap">
     <div id="sticksInTube"></div>
     <div id="tube">
+      <div class="edge"></div>
       <div id="label">
-        <span class="ch">财</span>
-        <span class="ch">密</span>
-        <span class="ch">富</span>
-        <span class="ch">码</span>
+        <span class="ch"><i>财</i></span>
+        <span class="ch"><i>密</i></span>
+        <span class="ch"><i>富</i></span>
+        <span class="ch"><i>码</i></span>
       </div>
+      <div class="sheen"></div>
     </div>
     <div id="mouth"></div>
   </div>
+
+  <!-- 光轮 / 光线 -->
+  <div id="halo"></div>
+  <div id="rays"></div>
 
   <!-- 抽出的签 -->
   <div id="drawnStick">
@@ -290,11 +540,12 @@
 
   <div id="reading">
     <div class="rk" id="rkText"></div>
+    <div class="line"></div>
     <div class="rd" id="rdText"></div>
     <button id="again">再摇一签</button>
   </div>
 
-  <div id="hint">摇一摇手机 · 抽一支签</div>
+  <div id="hint"><span class="dot"></span>摇一摇手机 · 抽一支签<span class="dot"></span></div>
 </div>
 <div id="toast"></div>
 
@@ -363,6 +614,26 @@ function randInt(n){
   });
 })();
 
+/* 金尘粒子 */
+(function buildDust(){
+  const layer = document.getElementById("dust");
+  const N = window.innerWidth < 500 ? 26 : 40;
+  for (let i = 0; i < N; i++){
+    const m = document.createElement("div");
+    m.className = "mote";
+    const s = 1.6 + Math.random()*3.2;
+    m.style.width  = s + "px";
+    m.style.height = s + "px";
+    m.style.left   = (Math.random()*100) + "%";
+    m.style.top    = (100 + Math.random()*40) + "%";
+    m.style.setProperty("--dx", (Math.random()*120 - 60) + "px");
+    m.style.animationDuration = (11 + Math.random()*13) + "s";
+    m.style.animationDelay    = (-Math.random()*22) + "s";
+    m.style.opacity = 0;
+    layer.appendChild(m);
+  }
+})();
+
 /* 摇一摇检测 */
 let lastX = null, lastY = null, lastZ = null, lastShake = 0;
 function onMotion(e){
@@ -393,6 +664,28 @@ function enableMotion(){
 enableMotion();
 
 /* 抽一签 */
+const halo = document.getElementById("halo");
+const rays = document.getElementById("rays");
+
+function burst(){
+  const r = drawn.getBoundingClientRect();
+  const cx = r.left + r.width/2, cy = r.top + r.height/2;
+  // 圆环
+  for (let i = 0; i < 2; i++){
+    const ring = document.createElement("div");
+    ring.className = "ring";
+    ring.style.left = cx + "px";
+    ring.style.top  = cy + "px";
+    ring.style.animationDelay = (i * 130) + "ms";
+    document.body.appendChild(ring);
+    setTimeout(() => ring.remove(), 1100);
+  }
+  // 光轮 / 光线
+  halo.classList.remove("on"); rays.classList.remove("on");
+  void halo.offsetWidth;
+  halo.classList.add("on"); rays.classList.add("on");
+}
+
 function draw(){
   if (busy) return;
   busy = true;
@@ -422,7 +715,8 @@ function draw(){
     drawn.classList.add("show");
     drawn.classList.add("anim");
 
-    // 签屑
+    // 特效
+    burst();
     confetti();
 
     setTimeout(() => {
@@ -447,18 +741,24 @@ tubeWrap.addEventListener("touchend", enableMotion, {once:true});
 function confetti(){
   const r = drawn.getBoundingClientRect();
   const cx = r.left + r.width/2, cy = r.top + r.height/2;
-  const colors = ["#e8b93f","#ffe9a8","#c0392b","#f6e7c8","#d4a03a"];
-  for (let i=0;i<22;i++){
+  const colors = ["#e8b93f","#ffe9a8","#c0392b","#f6e7c8","#d4a03a","#fff6d8"];
+  for (let i=0;i<30;i++){
     const c = document.createElement("div");
     c.className = "confetti";
     c.style.background = colors[randInt(colors.length)];
     c.style.left = cx+"px"; c.style.top = cy+"px";
+    // 一部分做成金色小圆点（金粉）
+    if (i % 3 === 0){
+      c.style.borderRadius = "50%";
+      c.style.width = c.style.height = "5px";
+      c.style.boxShadow = "0 0 7px 2px rgba(255,210,120,.75)";
+    }
     document.body.appendChild(c);
-    const ang = Math.random()*Math.PI*2, d = 60 + Math.random()*140;
+    const ang = Math.random()*Math.PI*2, d = 60 + Math.random()*160;
     c.animate([
       {transform:"translate(-50%,-50%) rotate(0) scale(1)", opacity:1},
-      {transform:`translate(calc(-50% + ${Math.cos(ang)*d}px), calc(-50% + ${Math.sin(ang)*d + 70}px)) rotate(${randInt(360)}deg) scale(.4)`, opacity:0}
-    ], {duration:700+Math.random()*500, easing:"cubic-bezier(.2,.6,.4,1)"})
+      {transform:`translate(calc(-50% + ${Math.cos(ang)*d}px), calc(-50% + ${Math.sin(ang)*d + 80}px)) rotate(${randInt(360)}deg) scale(.35)`, opacity:0}
+    ], {duration:800+Math.random()*600, easing:"cubic-bezier(.2,.6,.4,1)"})
      .onfinish = () => c.remove();
   }
 }
