@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>访问统计 · 财富密码</title>
+<style>
+  :root{
+    --bg:#12080a; --panel:#1d0f13; --panel2:#26141a; --line:rgba(255,214,140,.14);
+    --gold:#ffd76e; --gold2:#e8b93f; --txt:#f2e4d4; --dim:#b39a8a;
+    --up:#e8453c; --down:#12b886;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:radial-gradient(ellipse at 50% -10%,#3a1010,#12080a 55%);
+    color:var(--txt);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;padding:20px;
+  }
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:.12em;color:var(--gold);}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:18px;}
+  .wrap{max-width:1240px;margin:0 auto;}
+
+  /* 卡片 */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;}
+  .card{
+    background:linear-gradient(160deg,var(--panel),var(--panel2));
+    border:1px solid var(--line);border-radius:14px;padding:14px 16px;
+    position:relative;overflow:hidden;
+  }
+  .card::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 100% 0,rgba(255,214,140,.10),transparent 60%);pointer-events:none;}
+  .card .k{font-size:12px;color:var(--dim);letter-spacing:.06em;}
+  .card .v{font-size:26px;font-weight:800;color:var(--gold);margin-top:6px;font-variant-numeric:tabular-nums;}
+  .card .u{font-size:12px;color:var(--dim);margin-left:3px;font-weight:400;}
+
+  /* 工具条 */
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px;}
+  .bar select,.bar input{
+    background:var(--panel);color:var(--txt);border:1px solid var(--line);
+    border-radius:9px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;
+  }
+  .bar button{
+    background:linear-gradient(180deg,#ffe9a8,#e8b93f);color:#5e0c0a;border:none;
+    border-radius:9px;padding:8px 16px;font-size:13px;font-weight:800;cursor:pointer;
+    font-family:inherit;
+  }
+  .bar button.ghost{background:rgba(255,214,140,.10);color:var(--gold);border:1px solid var(--line);}
+  .bar button:active{transform:scale(.97);}
+  .bar .spacer{flex:1;}
+  .live{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim);}
+  .dot{width:7px;height:7px;border-radius:50%;background:#12b886;box-shadow:0 0 8px #12b886;animation:bl 1.4s infinite;}
+  @keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* 图表 */
+  .chartbox{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:16px;margin-bottom:16px;
+  }
+  .chartbox h3{margin:0 0 12px;font-size:13px;color:var(--dim);font-weight:600;letter-spacing:.08em;}
+  canvas{width:100%;height:180px;display:block;}
+
+  /* 表格 */
+  .tablebox{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px;}
+  .tablebox h3{margin:0;padding:14px 16px;font-size:13px;color:var(--dim);font-weight:600;letter-spacing:.08em;border-bottom:1px solid var(--line);}
+  .scroll{overflow:auto;max-height:420px;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{padding:9px 12px;text-align:left;white-space:nowrap;border-bottom:1px solid rgba(255,214,140,.07);}
+  th{position:sticky;top:0;background:#241319;color:var(--dim);font-weight:600;font-size:11.5px;letter-spacing:.05em;z-index:2;}
+  tbody tr:hover{background:rgba(255,214,140,.05);}
+  td.num{font-variant-numeric:tabular-nums;text-align:right;}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:rgba(255,214,140,.12);color:var(--gold);}
+  .pill.y{background:rgba(232,69,60,.18);color:#ff8a80;}
+  .empty{padding:30px;text-align:center;color:var(--dim);font-size:13px;}
+  .err{padding:14px 16px;background:rgba(232,69,60,.12);color:#ffb3ad;font-size:13px;border-radius:10px;margin-bottom:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>访问统计 · 财富密码</h1>
+  <div class="sub">实时查看进入链接的人数、IP、次数与停留时长</div>
+
+  <div id="errBox"></div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="bar">
+    <select id="range">
+      <option value="today">今天</option>
+      <option value="7" selected>近 7 天</option>
+      <option value="30">近 30 天</option>
+      <option value="all">全部</option>
+    </select>
+    <input id="search" placeholder="搜索 IP / 设备" style="width:170px">
+    <button id="refresh">刷新</button>
+    <button id="exportCsv" class="ghost">导出 CSV</button>
+    <button id="exportDaily" class="ghost">导出日报表</button>
+    <div class="spacer"></div>
+    <div class="live"><span class="dot"></span><span id="liveTxt">自动刷新 15s</span></div>
+  </div>
+
+  <div class="chartbox">
+    <h3>每日访问量</h3>
+    <canvas id="chart"></canvas>
+  </div>
+
+  <div class="tablebox">
+    <h3>访问明细（最近 500 条）</h3>
+    <div class="scroll"><table id="tbl">
+      <thead><tr>
+        <th>进入时间</th><th>IP</th><th>次数</th><th>停留时长</th>
+        <th>设备</th><th>浏览器</th><th>是否抽签</th><th>来源</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+
+  <div class="tablebox">
+    <h3>IP 汇总（按访问次数）</h3>
+    <div class="scroll"><table id="tblIp">
+      <thead><tr>
+        <th>IP</th><th>访问次数</th><th>独立访客</th><th>平均停留</th><th>首次</th><th>最近</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+</div>
+
+<script>
+/* ====== ① 改成你的 Supabase 值（与 stats.js 相同） ====== */
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
+const TABLE = "visits";
+
+const HEADERS = {
+  "apikey": SUPABASE_ANON_KEY,
+  "Authorization": "Bearer " + SUPABASE_ANON_KEY
+};
+
+function api(path){
+  return fetch(SUPABASE_URL + "/rest/v1/" + path, {headers: HEADERS})
+    .then(r => {
+      if (!r.ok) throw new Error(r.status + " " + r.statusText);
+      return r.json();
+    });
+}
+
+function fmtDur(s){
+  s = Number(s) || 0;
+  if (s < 60) return s + " 秒";
+  const m = Math.floor(s / 60), r = s % 60;
+  return r ? `${m} 分 ${r} 秒` : `${m} 分钟`;
+}
+function fmtTime(iso){
+  if (!iso) return "-";
+  const d = new Date(iso);
+  const p = n => String(n).padStart(2, "0");
+  return `${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+function since(){
+  const v = document.getElementById("range").value;
+  const now = new Date();
+  if (v === "all") return null;
+  if (v === "today"){
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return d.toISOString();
+  }
+  const d = new Date(now.getTime() - Number(v) * 86400000);
+  return d.toISOString();
+}
+
+let rows = [];
+
+async function load(){
+  document.getElementById("errBox").innerHTML = "";
+  if (SUPABASE_URL.indexOf("YOUR-PROJECT") >= 0){
+    document.getElementById("errBox").innerHTML =
+      '<div class="err">尚未配置 Supabase：请把本文件里的 SUPABASE_URL 和 SUPABASE_ANON_KEY 替换成你自己的项目值（与 stats.js 一致）。</div>';
+    return;
+  }
+  let q = `${TABLE}?select=*&order=entered_at.desc&limit=500`;
+  const s = since();
+  if (s) q += `&entered_at=gte.${encodeURIComponent(s)}`;
+  const kw = document.getElementById("search").value.trim();
+  if (kw) q += `&or=(ip.ilike.*${encodeURIComponent(kw)}*,device.ilike.*${encodeURIComponent(kw)}*)`;
+
+  try{
+    rows = await api(q);
+  }catch(e){
+    document.getElementById("errBox").innerHTML = '<div class="err">读取失败：' + e.message + '</div>';
+    return;
+  }
+  renderCards(rows);
+  renderTable(rows);
+  renderChart(rows);
+  await loadIpSummary();
+}
+
+function renderCards(data){
+  const pv = data.length;
+  const uv = new Set(data.map(r => r.visitor_id)).size;
+  const ips = new Set(data.map(r => r.ip)).size;
+  const draws = data.filter(r => r.did_draw).length;
+  const durs = data.map(r => r.duration || 0).filter(x => x > 0);
+  const avg = durs.length ? Math.round(durs.reduce((a,b)=>a+b,0)/durs.length) : 0;
+
+  const items = [
+    ["访问次数 PV", pv, "次"],
+    ["独立访客 UV", uv, "人"],
+    ["独立 IP", ips, "个"],
+    ["平均停留", avg, "秒"],
+    ["抽签次数", draws, "次"]
+  ];
+  document.getElementById("cards").innerHTML = items.map(([k,v,u]) =>
+    `<div class="card"><div class="k">${k}</div><div class="v">${v}<span class="u">${u}</span></div></div>`
+  ).join("");
+}
+
+const ipCountMap = new Map();
+
+function renderTable(data){
+  // 统计每个 IP 在本区间的访问次数
+  ipCountMap.clear();
+  data.forEach(r => ipCountMap.set(r.ip, (ipCountMap.get(r.ip)||0)+1));
+
+  const tb = document.querySelector("#tbl tbody");
+  if (!data.length){
+    tb.innerHTML = '<tr><td colspan="8" class="empty">暂无数据</td></tr>';
+    return;
+  }
+  tb.innerHTML = data.map(r => `
+    <tr>
+      <td>${fmtTime(r.entered_at)}</td>
+      <td>${r.ip || "-"}</td>
+      <td class="num">${ipCountMap.get(r.ip) || 1}</td>
+      <td class="num">${fmtDur(r.duration)}</td>
+      <td>${r.device || "-"}${r.os ? " · " + r.os : ""}</td>
+      <td>${r.browser || "-"}</td>
+      <td>${r.did_draw ? '<span class="pill y">已抽签</span>' : '<span class="pill">仅进入</span>'}</td>
+      <td>${r.referrer ? (r.referrer.length > 34 ? r.referrer.slice(0,34)+"…" : r.referrer) : "直接访问"}</td>
+    </tr>`).join("");
+}
+
+async function loadIpSummary(){
+  const tb = document.querySelector("#tblIp tbody");
+  const map = new Map();
+  rows.forEach(r => {
+    const k = r.ip || "unknown";
+    if (!map.has(k)) map.set(k, {ip:k, visits:0, visitors:new Set(), dur:[], first:r.entered_at, last:r.entered_at});
+    const o = map.get(k);
+    o.visits++;
+    o.visitors.add(r.visitor_id);
+    if (r.duration) o.dur.push(r.duration);
+    if (r.entered_at < o.first) o.first = r.entered_at;
+    if (r.entered_at > o.last) o.last = r.entered_at;
+  });
+  const arr = [...map.values()].sort((a,b) => b.visits - a.visits).slice(0, 100);
+  if (!arr.length){
+    tb.innerHTML = '<tr><td colspan="6" class="empty">暂无数据</td></tr>';
+    return;
+  }
+  tb.innerHTML = arr.map(o => `
+    <tr>
+      <td>${o.ip}</td>
+      <td class="num">${o.visits}</td>
+      <td class="num">${o.visitors.size}</td>
+      <td class="num">${o.dur.length ? fmtDur(Math.round(o.dur.reduce((a,b)=>a+b,0)/o.dur.length)) : "-"}</td>
+      <td>${fmtTime(o.first)}</td>
+      <td>${fmtTime(o.last)}</td>
+    </tr>`).join("");
+}
+
+/* ====== 折线/柱状图（原生 Canvas） ====== */
+function renderChart(data){
+  const cv = document.getElementById("chart");
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = 180;
+  cv.width = W * dpr; cv.height = H * dpr;
+  const ctx = cv.getContext("2d");
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  // 按天聚合
+  const map = new Map();
+  data.forEach(r => {
+    const d = new Date(r.entered_at);
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    if (!map.has(k)) map.set(k, {pv:0, uv:new Set()});
+    map.get(k).pv++;
+    map.get(k).uv.add(r.visitor_id);
+  });
+  const days = [...map.keys()].sort().slice(-14);
+  if (!days.length){
+    ctx.fillStyle = "#7a665c"; ctx.font = "13px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText("暂无数据", W/2, H/2);
+    return;
+  }
+  const pv = days.map(d => map.get(d).pv);
+  const uv = days.map(d => map.get(d).uv.size);
+  const max = Math.max(...pv, 1);
+
+  const padL = 34, padB = 26, padT = 12, padR = 8;
+  const cw = W - padL - padR, ch = H - padT - padB;
+
+  // 网格
+  ctx.strokeStyle = "rgba(255,214,140,.10)";
+  ctx.lineWidth = 1;
+  ctx.fillStyle = "rgba(179,154,138,.8)";
+  ctx.font = "10px sans-serif";
+  ctx.textAlign = "right";
+  for (let i = 0; i <= 4; i++){
+    const y = padT + ch * i / 4;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+    ctx.fillText(Math.round(max * (1 - i/4)), padL - 6, y + 3);
+  }
+
+  const bw = cw / days.length;
+  days.forEach((d, i) => {
+    const x = padL + bw * i + bw * 0.18;
+    const w = bw * 0.44;
+    const h = ch * (pv[i] / max);
+    const g = ctx.createLinearGradient(0, padT + ch - h, 0, padT + ch);
+    g.addColorStop(0, "rgba(255,215,110,.95)");
+    g.addColorStop(1, "rgba(232,185,63,.35)");
+    ctx.fillStyle = g;
+    const y = padT + ch - h;
+    const r = Math.min(4, w/2, h);
+    ctx.beginPath();
+    ctx.moveTo(x, padT + ch);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, padT + ch);
+    ctx.closePath();
+    ctx.fill();
+
+    // UV 折线点
+    const uy = padT + ch - ch * (uv[i] / max);
+    ctx.fillStyle = "#ff9a8a";
+    ctx.beginPath();
+    ctx.arc(x + w + bw*0.12, uy, 2.6, 0, Math.PI*2);
+    ctx.fill();
+
+    // x 轴标签
+    if (days.length <= 8 || i % Math.ceil(days.length/7) === 0){
+      ctx.fillStyle = "rgba(179,154,138,.75)";
+      ctx.textAlign = "center";
+      ctx.font = "10px sans-serif";
+      ctx.fillText(d.slice(5), x + w/2, H - 8);
+    }
+  });
+
+  // 图例
+  ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(255,215,110,.9)"; ctx.fillRect(padL, 2, 10, 3);
+  ctx.fillStyle = "rgba(179,154,138,.9)"; ctx.font = "10px sans-serif";
+  ctx.fillText("PV", padL + 14, 7);
+  ctx.fillStyle = "#ff9a8a"; ctx.beginPath(); ctx.arc(padL + 44, 4, 3, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "rgba(179,154,138,.9)"; ctx.fillText("UV", padL + 52, 7);
+}
+
+/* ====== 导出 ====== */
+function toCsv(list, cols){
+  const head = cols.map(c => c.label).join(",");
+  const body = list.map(r => cols.map(c => {
+    let v = c.get(r);
+    if (v == null) v = "";
+    v = String(v).replace(/"/g, '""');
+    return /[",\n]/.test(v) ? `"${v}"` : v;
+  }).join(",")).join("\n");
+  return "\ufeff" + head + "\n" + body;
+}
+
+function download(name, text){
+  const blob = new Blob([text], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+document.getElementById("exportCsv").onclick = () => {
+  if (!rows.length) return alert("暂无数据");
+  const cols = [
+    {label:"进入时间", get:r => fmtTime(r.entered_at)},
+    {label:"IP", get:r => r.ip},
+    {label:"访问次数", get:r => ipCountMap.get(r.ip) || 1},
+    {label:"停留秒数", get:r => r.duration || 0},
+    {label:"停留时长", get:r => fmtDur(r.duration)},
+    {label:"设备", get:r => r.device},
+    {label:"系统", get:r => r.os},
+    {label:"浏览器", get:r => r.browser},
+    {label:"是否抽签", get:r => r.did_draw ? "是" : "否"},
+    {label:"来源", get:r => r.referrer || "直接访问"},
+    {label:"访客ID", get:r => r.visitor_id}
+  ];
+  download(`访问明细_${new Date().toISOString().slice(0,10)}.csv`, toCsv(rows, cols));
+};
+
+document.getElementById("exportDaily").onclick = () => {
+  if (!rows.length) return alert("暂无数据");
+  const map = new Map();
+  rows.forEach(r => {
+    const d = new Date(r.entered_at);
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    if (!map.has(k)) map.set(k, {day:k, pv:0, uv:new Set(), ips:new Set(), dur:[], draws:0});
+    const o = map.get(k);
+    o.pv++; o.uv.add(r.visitor_id); o.ips.add(r.ip);
+    if (r.duration) o.dur.push(r.duration);
+    if (r.did_draw) o.draws++;
+  });
+  const list = [...map.values()].sort((a,b) => a.day < b.day ? 1 : -1);
+  const cols = [
+    {label:"日期", get:r => r.day},
+    {label:"访问次数", get:r => r.pv},
+    {label:"独立访客", get:r => r.uv.size},
+    {label:"独立IP", get:r => r.ips.size},
+    {label:"平均停留(秒)", get:r => r.dur.length ? Math.round(r.dur.reduce((a,b)=>a+b,0)/r.dur.length) : 0},
+    {label:"抽签次数", get:r => r.draws}
+  ];
+  download(`访问日报_${new Date().toISOString().slice(0,10)}.csv`, toCsv(list, cols));
+};
+
+/* ====== 事件 ====== */
+document.getElementById("refresh").onclick = load;
+document.getElementById("range").onchange = load;
+document.getElementById("search").oninput = (() => {
+  let t;
+  return () => { clearTimeout(t); t = setTimeout(load, 400); };
+})();
+window.addEventListener("resize", () => renderChart(rows));
+
+load();
+setInterval(() => { if (document.visibilityState === "visible") load(); }, 15000);
+</script>
+</body>
+</html>
